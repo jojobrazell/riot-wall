@@ -257,8 +257,14 @@ async function loadLayout(){
 
 async function showJoin(){
   let url=location.origin;
-  try{ const j=await (await fetch('/api/wifi')).json();
-    if(j.urls&&j.urls.length) url=j.urls[0]; }catch{}
+  /* Only swap in the server's LAN IP when the wall itself runs on this machine
+     (venue-laptop mode). On a cloud host the LAN IP is the container's private
+     address, unreachable from any phone, and the public origin is the QR. */
+  const local=/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
+  if(local){
+    try{ const j=await (await fetch('/api/wifi')).json();
+      if(j.urls&&j.urls.length) url=j.urls[0]; }catch{}
+  }
   document.getElementById('url').textContent=url.replace(/^https?:\/\//,'');
   try{ if(window.qrcode){ const q=window.qrcode(0,'M'); q.addData(url); q.make();
     const el=document.getElementById('qr'); el.innerHTML=q.createImgTag(8,2);
