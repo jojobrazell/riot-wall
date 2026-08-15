@@ -948,6 +948,9 @@ $('#allow').addEventListener('click', async ()=>{
 function applyCalib(c){
   if(PANELWALL) c = PANELWALL_CALIB;
   tracker.setCalib(c);
+  // the fallback band aimer needs to know where the outer posters sit now that
+  // the paint runs the full wall; no ruler in the calib = the old 0..1 mapping
+  aimer.setRuler(c && c.ruler);
   $('#cal').classList.toggle('on', !(c && c.measured));
 }
 async function refreshCalib(){

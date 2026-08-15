@@ -33,6 +33,46 @@ const STATE_FILE = join(DATA, 'wall.json');
 const CALIB_FILE = join(DATA, 'calib.json');
 const ADMIN_KEY = process.env.RIOT_ADMIN_KEY || 'riot2026';
 
+/* ---------- lead backup to Firestore ----------
+   data/ is EPHEMERAL on a PaaS free tier: a redeploy or a spin-down wipes the
+   disk, and the emails are the deliverable of the night. So every join is also
+   fired at Firestore, write-only, fire-and-forget: a Firestore failure logs and
+   never blocks the can. Anonymous auth, same flow the project board uses. */
+const FB = {
+  project: process.env.FIREBASE_PROJECT_ID || '',
+  apiKey: process.env.FIREBASE_API_KEY || '',
+  collection: process.env.FIREBASE_COLLECTION || 'riot-wall-leads',
+  token: '', tokenAt: 0,
+};
+async function fbToken() {
+  if (FB.token && Date.now() - FB.tokenAt < 50 * 60 * 1000) return FB.token;
+  const r = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB.apiKey}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ returnSecureToken: true }) });
+  if (!r.ok) throw new Error('firebase auth ' + r.status);
+  const j = await r.json();
+  FB.token = j.idToken; FB.tokenAt = Date.now();
+  return FB.token;
+}
+function pushLead(p) {
+  if (!FB.project || !FB.apiKey) return;
+  (async () => {
+    const token = await fbToken();
+    const r = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${FB.project}/databases/(default)/documents/${encodeURIComponent(FB.collection)}`,
+      { method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ fields: {
+          handle: { stringValue: p.handle },
+          email:  { stringValue: p.email },
+          event:  { stringValue: 'slowsie-2026-08-15' },
+          joined: { timestampValue: new Date(p.ts).toISOString() },
+        } }) });
+    if (!r.ok) throw new Error('firestore write ' + r.status);
+  })().catch(e => console.warn('lead backup failed:', e.message));
+}
+
 // A long night of heavy spraying is a lot of dabs. Cap it so memory cannot run
 // away, and say so out loud rather than silently dropping the oldest art.
 const MAX_EVENTS = 260000;
@@ -94,8 +134,9 @@ if (existsSync(CALIB_FILE)) {
    (staff toggle in /admin), at which point the measured calib takes over.
 
    All fractions are of the SCREEN; the wall page and the calib below both read
-   this object, so they can never disagree. The paint area is what u/v 0..1 maps
-   onto: the strip between the two gutters.
+   this object, so they can never disagree. The paint area is the WHOLE screen:
+   posters are pasted-up paper drawn ABOVE the paint layer, so spraying "over"
+   one slides the paint under the paper and the tracker's image stays clean.
 
    The one honest gap: the phone converts pose to metres via the panel's REAL
    printed height, and an on-screen panel's physical height depends on the
@@ -103,13 +144,17 @@ if (existsSync(CALIB_FILE)) {
    in /admin and the metres readout becomes true. Aim is exact either way, only
    the distance number scales. */
 const SCREEN_LAYOUT = {
-  gutter: 0.115,          // each side gutter, fraction of screen width
-  pad: 0.012,             // inset around each panel, fraction of screen width
-  panels: [               // two per side, stacked
-    { name: 'panel1', side: 'left',  slot: 0 },
-    { name: 'panel2', side: 'left',  slot: 1 },
-    { name: 'panel3', side: 'right', slot: 0 },
-    { name: 'panel4', side: 'right', slot: 1 },
+  panelW: 0.085,          // poster width, fraction of screen width
+  /* Spread across the wall so a phone aimed ANYWHERE has a poster near frame
+     (JoJo, 2026-08-15: mid-wall aim kept losing lock and the paint fell).
+     The two OUTER posters share a height on purpose: the fallback aimer reads
+     the leftmost and rightmost bright bands as a ruler and needs their
+     vertical extents to overlap. */
+  panels: [
+    { name: 'panel1', fx: 0.060, fy: 0.50 },
+    { name: 'panel2', fx: 0.380, fy: 0.30 },
+    { name: 'panel3', fx: 0.620, fy: 0.72 },
+    { name: 'panel4', fx: 0.940, fy: 0.50 },
   ],
 };
 let screenPanels = true;
@@ -118,21 +163,29 @@ let screenHmm = 810;      // physical screen height; 810mm is a 65in 16:9
 function screenCalib() {
   // Everything in "screen units" where the screen is 16:9 at screenHmm tall.
   const H = screenHmm, W = H * 16 / 9;
-  const gutterW = SCREEN_LAYOUT.gutter * W, padW = SCREEN_LAYOUT.pad * W;
-  const panelW = gutterW - 2 * padW, panelH = panelW * 4 / 3;   // 3:4 portrait
-  const paintW = W - 2 * gutterW;
-  const offX = paintW / 2 + gutterW / 2;                        // gutter centre
-  const offY = H / 4;                                           // slot centres
+  const panelW = SCREEN_LAYOUT.panelW * W, panelH = panelW * 4 / 3;  // 3:4 portrait
   const panels = {};
   for (const p of SCREEN_LAYOUT.panels) {
     panels[p.name] = {
-      offXMm: p.side === 'left' ? -offX : offX,
-      offYMm: p.slot === 0 ? offY : -offY,
+      offXMm: (p.fx - 0.5) * W,
+      offYMm: (0.5 - p.fy) * H,
       heightMm: panelH, on: true,
     };
   }
+  /* The fallback aimer's ruler: the outer posters' inner edges and their shared
+     vertical extent, as wall fractions. Without this the band aimer would map
+     the span BETWEEN the outer posters to 0..1 when the paint now runs the full
+     wall, and every fallback stroke would land squeezed toward the centre. */
+  const first = SCREEN_LAYOUT.panels[0], last = SCREEN_LAYOUT.panels[SCREEN_LAYOUT.panels.length - 1];
+  const phFrac = (panelH / H);
+  const ruler = {
+    uL: first.fx + SCREEN_LAYOUT.panelW / 2,
+    uR: last.fx - SCREEN_LAYOUT.panelW / 2,
+    vT: first.fy - phFrac / 2,
+    vB: first.fy + phFrac / 2,
+  };
   return { measured: true, source: 'screen',
-           wall: { widthMm: paintW, heightMm: H }, panels };
+           wall: { widthMm: W, heightMm: H }, panels, ruler };
 }
 const activeCalib = () => (screenPanels ? screenCalib() : calib);
 
@@ -247,6 +300,7 @@ createServer(async (req, res) => {
       const p = { id: nextId++, handle, email, ts: Date.now(), dabs: 0 };
       painters.set(p.id, p);
       persist();
+      pushLead(p);
       broadcast('painter', { id: p.id, handle: p.handle });
       console.log(`can #${p.id} claimed by ${handle}`);
       // calib rides along, so a fresh can never has to make a second request

@@ -14,10 +14,8 @@
   #relief{mix-blend-mode:multiply;pointer-events:none}
   #ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;
     justify-content:space-between}
-  /* horizontal padding clears the panel gutters (11.5% each side), so the QR
-     block and the brand plates never sit on top of a tracking target */
   header,footer{display:flex;align-items:flex-start;justify-content:space-between;
-    padding:3vh calc(11.5% + 1vw)}
+    padding:3vh 2.5vw}
   footer{align-items:flex-end}
   .kicker{font:600 1.05vh/1 sans-serif;letter-spacing:.34em;text-transform:uppercase;
     color:rgba(255,255,255,.42)}
@@ -47,6 +45,10 @@
      mortar joint is in shadow whether or not somebody sprayed across it. This is
      what stops the paint reading as a sticker laid on a photo of a wall. -->
 <canvas id="relief"></canvas>
+<!-- Posters sit ABOVE the paint: pasted paper on a painted wall. Spraying "over"
+     one slides the paint underneath, which also keeps the tracker's image
+     byte-stable no matter what gets sprayed. -->
+<canvas id="posters"></canvas>
 <canvas id="fx"></canvas>
 <div id="ui">
   <header>
@@ -74,65 +76,49 @@ import { drawSurface, drawRelief } from './surface.js?v=1';
 const bg=document.getElementById('bg'), bgx=bg.getContext('2d');
 const paint=document.getElementById('paint'), px=paint.getContext('2d',{willReadFrequently:true});
 const relief=document.getElementById('relief'), rx=relief.getContext('2d');
+const posters=document.getElementById('posters'), pox=posters.getContext('2d');
 const fx=document.getElementById('fx'), fxx=fx.getContext('2d');
 
 /* ---------- SCREEN PANELS ----------
-   The tracking panels are drawn ON this screen, in side gutters the paint never
-   reaches, so phones lock the screen itself and nothing has to be printed. The
-   geometry comes from /api/layout, the SAME object the server derives the
-   phones' calibration from, so where the wall draws a panel and where a phone
-   believes it is can never disagree. Paint u/v 0..1 maps onto the strip BETWEEN
-   the gutters. */
-let LAYOUT = null;                       // {screenPanels, layout:{gutter,pad,panels}, screenHmm}
+   The tracking posters are drawn ON this screen, SPREAD ACROSS the wall (JoJo,
+   2026-08-15: gutter-only posters meant a mid-wall aim had no target in frame
+   and the paint fell). They live on their own canvas ABOVE the paint, so the
+   paint runs the FULL wall and slides under the paper. The geometry comes from
+   /api/layout, the SAME object the server derives the phones' calibration from,
+   so where the wall draws a poster and where a phone believes it is can never
+   disagree. */
+let LAYOUT = null;                       // {screenPanels, layout:{panelW,panels:[{name,fx,fy}]}, screenHmm}
 const panelArt = new Map();              // name -> HTMLImageElement
-function paintX0(){ return LAYOUT && LAYOUT.screenPanels ? LAYOUT.layout.gutter * W : 0; }
-function paintX1(){ return LAYOUT && LAYOUT.screenPanels ? (1 - LAYOUT.layout.gutter) * W : W; }
 
-function drawGutters(){
+function drawPosters(){
+  pox.clearRect(0,0,W,H);
   if (!(LAYOUT && LAYOUT.screenPanels)) return;
-  const { gutter, pad, panels } = LAYOUT.layout;
-  const gw = gutter * W, pw = (gutter - 2 * pad) * W, ph = pw * 4 / 3;
-  // BRICK ALL ACROSS (JoJo ruling 2026-08-13: no white columns). The panels sit
-  // straight on the wall as paste-up posters, which is more Girl Riot anyway.
-  // The fallback ruler survives: the aimer finds the leftmost and rightmost
-  // tall bright BANDS, and the stacked paper posters themselves are those bands
-  // on a near-black wall. Paint stays between the gutters, so nothing brighter
-  // can ever appear further out than the posters.
+  const { panelW, panels } = LAYOUT.layout;
+  const pw = panelW * W, ph = pw * 4 / 3;
   for (const p of panels){
-    const cx = p.side === 'left' ? gw / 2 : W - gw / 2;
-    const cy = p.slot === 0 ? H * 0.25 : H * 0.75;
+    const cx = p.fx * W, cy = p.fy * H;
     // paper backing proud of the art, so the target has a bright border the
     // tracker can grab even where the art runs dark
-    bgx.fillStyle = '#0A0A0C';
-    bgx.fillRect(cx - pw / 2 - 6, cy - ph / 2 - 6, pw + 12, ph + 12);
-    bgx.fillStyle = '#F6F3EA';
-    bgx.fillRect(cx - pw / 2 - 3, cy - ph / 2 - 3, pw + 6, ph + 6);
+    pox.fillStyle = '#0A0A0C';
+    pox.fillRect(cx - pw / 2 - 6, cy - ph / 2 - 6, pw + 12, ph + 12);
+    pox.fillStyle = '#F6F3EA';
+    pox.fillRect(cx - pw / 2 - 3, cy - ph / 2 - 3, pw + 6, ph + 6);
     const img = panelArt.get(p.name);
     if (img && img.complete && img.naturalWidth)
-      bgx.drawImage(img, cx - pw / 2, cy - ph / 2, pw, ph);
-    else { bgx.fillStyle = '#CFCBC0'; bgx.fillRect(cx - pw / 2, cy - ph / 2, pw, ph); }
+      pox.drawImage(img, cx - pw / 2, cy - ph / 2, pw, ph);
+    else { pox.fillStyle = '#CFCBC0'; pox.fillRect(cx - pw / 2, cy - ph / 2, pw, ph); }
   }
 }
 
 /* The wall is a height field lit by a light, so building it is real work (a
    normal pass plus a blur over every pixel). It is baked ONCE per size and
    surface, never per frame. Both layers come off the same cached field so the
-   lit wall and its shadows can never drift apart. Gutters go on after, and the
-   relief is cleared under them so no fake mortar shadow falls on the paper. */
+   lit wall and its shadows can never drift apart. Posters draw on their own
+   layer above everything, so no relief clearing is needed: the paper simply
+   covers the mortar shadows beneath it. */
 function paintWall(){
   drawSurface(bgx,W,H,surface); drawRelief(rx,W,H,surface);
-  drawGutters();
-  // clear the mortar shadow under each POSTER only: paper pasted over brick
-  // sits above the crevices, but the brick between the posters keeps its relief
-  if (LAYOUT && LAYOUT.screenPanels){
-    const { gutter, pad, panels } = LAYOUT.layout;
-    const gw = gutter * W, pw = (gutter - 2 * pad) * W, ph = pw * 4 / 3;
-    for (const p of panels){
-      const cx = p.side === 'left' ? gw / 2 : W - gw / 2;
-      const cy = p.slot === 0 ? H * 0.25 : H * 0.75;
-      rx.clearRect(cx - pw / 2 - 6, cy - ph / 2 - 6, pw + 12, ph + 12);
-    }
-  }
+  drawPosters();
 }
 let W=0,H=0, surface='brick';
 let events=[];                          // the wall IS this list
@@ -148,11 +134,10 @@ const wallScale = () => W/1920;
 function apply(g, e){
   const s = e.s * wallScale();
   let last = e.b ? null : lastPt.get(e.u) || null;
-  // u/v 0..1 is the PAINT AREA, the strip between the gutters, so panel art can
-  // never be painted over and a phone's idea of the wall matches this mapping.
-  const x0 = paintX0(), x1 = paintX1();
+  // u/v 0..1 is the WHOLE wall. Posters are drawn above the paint, so nothing
+  // needs protecting from it.
   for(const [nx,ny] of e.p){
-    last = spray(g, { x:x0+nx*(x1-x0), y:ny*H, color:e.c, nozzle:e.n, tool:e.t,
+    last = spray(g, { x:nx*W, y:ny*H, color:e.c, nozzle:e.n, tool:e.t,
                       size:s, spread:e.sp, depth:1 }, last);
   }
   lastPt.set(e.u, last);
@@ -168,7 +153,7 @@ function rebuild(){
 function fit(){
   const dpr=Math.min(2, devicePixelRatio||1);
   W=Math.round(innerWidth*dpr); H=Math.round(innerHeight*dpr);
-  for(const c of [bg,paint,relief,fx]){ c.width=W; c.height=H; }
+  for(const c of [bg,paint,relief,posters,fx]){ c.width=W; c.height=H; }
   paintWall();
   rebuild();
 }

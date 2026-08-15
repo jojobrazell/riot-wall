@@ -40,6 +40,13 @@ export function createAimer() {
   const cv = document.createElement('canvas');
   const g = cv.getContext('2d', { willReadFrequently: true });
   let W = 0, H = 0, labels = null, stack = null, luma = null;
+  /* Where the band ruler actually sits on the wall, in wall fractions
+     {uL,uR,vT,vB}. With posters spread across a full-wall paint area, the span
+     between the outer posters is no longer the paint area, so the server ships
+     the true mapping in the calib and it is applied here. Null = the old
+     behaviour (bands map straight to 0..1), which stays right for printed
+     panels hung beside the screen. */
+  let RULER = null;
 
   function resize(sw, sh) {
     const k = Math.sqrt(AREA / (sw * sh));
@@ -95,10 +102,15 @@ export function createAimer() {
          padding (about 1.5% of the span per side), far below hand jitter. */
       const col = findColumns(luma, W, H, thr);
       if (col) {
-        if (!primed) { sx = col.u; sy = col.v; sd = col.fill; primed = true; }
+        let cu = col.u, cv2 = col.v;
+        if (RULER) {
+          cu = RULER.uL + cu * (RULER.uR - RULER.uL);
+          cv2 = RULER.vT + cv2 * (RULER.vB - RULER.vT);
+        }
+        if (!primed) { sx = cu; sy = cv2; sd = col.fill; primed = true; }
         else {
-          sx += (col.u - sx) * smoothing;
-          sy += (col.v - sy) * smoothing;
+          sx += (cu - sx) * smoothing;
+          sy += (cv2 - sy) * smoothing;
           sd += (col.fill - sd) * (smoothing * 0.6);
         }
         return { ok: true, u: sx, v: sy, fill: sd, box: col.box, columns: true };
@@ -172,6 +184,7 @@ export function createAimer() {
     },
 
     reset() { primed = false; },
+    setRuler(r) { RULER = (r && Number.isFinite(r.uL) && Number.isFinite(r.uR)) ? r : null; },
   };
 }
 

@@ -68,12 +68,13 @@ function buildHeight(w, h, type, k) {
 
   if (type === 'brick' || type === 'subway') {
     const sub = type === 'subway';
-    // Real brick is about 215mm long, so on a 2m wide venue screen it is roughly
-    // a tenth of the width. At 108px on 1920 it read as embossed chocolate: the
-    // single biggest thing making it look like a pattern instead of a wall.
-    const bw = (sub ? 200 : 196) * k, bh = (sub ? 96 : 62) * k;
-    const joint = (sub ? 9 : 14) * k;        // mortar width
-    const round = (sub ? 6 : 9) * k;         // how rounded the brick shoulder is
+    // Sized for a LARGE projected wall, not a 2m screen: at true-brick scale the
+    // projection read as giant novelty bricks (JoJo, 2026-08-15), so the courses
+    // run finer than life. Small enough to read as texture, big enough that the
+    // mortar relief survives the bake cap.
+    const bw = (sub ? 132 : 118) * k, bh = (sub ? 64 : 38) * k;
+    const joint = (sub ? 7 : 9) * k;         // mortar width
+    const round = (sub ? 5 : 6) * k;         // how rounded the brick shoulder is
     for (let y = 0; y < h; y++) {
       const row = Math.floor(y / (bh + joint));
       const offX = (row % 2) ? bw / 2 : 0;
