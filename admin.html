@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>R!OT WALL, staff</title>
+<meta name="description" content="Moderate the wall, change the surface, export leads.">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:#0A0A0C;color:#fff;
+    font-family:"Archivo Narrow","Arial Narrow",system-ui,sans-serif}
+  body{padding:16px 14px calc(24px + env(safe-area-inset-bottom))}
+  .kicker{font:600 9.5px/1 sans-serif;letter-spacing:.28em;text-transform:uppercase;
+    color:rgba(255,255,255,.45)}
+  h1{font:800 26px/1 Georgia,serif;margin:6px 0 14px}
+  h1 em{font-style:normal;color:#FF1E8E}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  /* color-scheme:dark is what makes the native dropdown POPUP dark. Without it
+     Windows paints the option list white and white-on-white text vanished. The
+     explicit option colours cover browsers that ignore color-scheme. */
+  input,select{flex:1 1 150px;min-height:46px;padding:0 12px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.18);border-radius:12px;color:#fff;font:600 15px/1 inherit;
+    color-scheme:dark}
+  select option{background:#14100E;color:#fff}
+  /* JoJo's standing ruling: buttons are FULLY ROUNDED, nothing else is.
+     Flex centring rather than line-height, because an <a> stretched by the flex
+     row put "Leads CSV" at the top left instead of the middle. */
+  button,a.btn{min-height:46px;padding:0 18px;border:1px solid rgba(255,255,255,.18);
+    border-radius:9999px;background:rgba(255,255,255,.05);color:#fff;font:700 11px/1 inherit;
+    letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:none;
+    display:inline-flex;align-items:center;justify-content:center;text-align:center}
+  button:disabled{opacity:.32;cursor:not-allowed}
+  a.btn{color:#B6FF1A;border-color:rgba(182,255,26,.4)}
+  a.btn.off{pointer-events:none;opacity:.32}
+  .danger{background:#E01B24;border-color:#E01B24}
+
+  /* the lock state, loud, because every action silently 403s without the key */
+  #lockbar{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:11px 14px;
+    border-radius:12px;font:800 12px/1.3 inherit;letter-spacing:.16em;text-transform:uppercase}
+  #lockbar.locked{background:rgba(224,27,36,.92);color:#fff}
+  #lockbar.open{background:rgba(182,255,26,.92);color:#0A0A0C}
+  #lockbar b{font-weight:800}
+  #lockbar span{font:600 10px/1.4 sans-serif;letter-spacing:.06em;text-transform:none;opacity:.9}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td,th{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.10);text-align:left;
+    font:600 13px/1.3 inherit}
+  th{font:600 9.5px/1 sans-serif;letter-spacing:.2em;text-transform:uppercase;
+    color:rgba(255,255,255,.42)}
+  td.n{font:600 12px/1 monospace;color:rgba(255,255,255,.55)}
+  tr.gone{opacity:.35}
+  .nuke{min-height:38px;line-height:38px;padding:0 12px;background:#E01B24;border-color:#E01B24}
+  /* status was tiny acid text that auto-cleared in 4s, so a failed wipe looked
+     like nothing happened at all. Now it is a filled block that says which. */
+  #st{margin:10px 0;min-height:0;padding:0;border-radius:12px;
+    font:700 12px/1.4 sans-serif;letter-spacing:.04em}
+  #st:not(:empty){padding:10px 12px}
+  #st.good{background:rgba(182,255,26,.92);color:#0A0A0C}
+  #st.bad{background:rgba(224,27,36,.92);color:#fff}
+  .note{margin-top:16px;font:500 12px/1.6 sans-serif;color:rgba(255,255,255,.5)}
+  h2{font:700 12px/1 sans-serif;letter-spacing:.2em;text-transform:uppercase;
+    color:rgba(255,255,255,.55);margin:26px 0 8px;padding-top:16px;
+    border-top:1px solid rgba(255,255,255,.10)}
+  .cal{display:grid;grid-template-columns:auto repeat(3,1fr);gap:6px;align-items:center}
+  .cal .hd{font:600 9px/1.3 sans-serif;letter-spacing:.14em;text-transform:uppercase;
+    color:rgba(255,255,255,.40)}
+  .cal input{min-height:42px;font:600 14px/1 monospace;padding:0 8px;width:100%;flex:none}
+  .cal label{display:flex;align-items:center;gap:6px;font:700 12px/1 inherit;
+    letter-spacing:.1em;color:#B6FF1A}
+  .cal input[type=checkbox]{width:20px;height:20px;min-height:0;accent-color:#FF1E8E}
+  #map{width:100%;height:150px;margin-top:12px;border-radius:9px;
+    border:1px solid rgba(255,255,255,.14);background:#08070a;display:block}
+  .warn{margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(255,106,0,.9);
+    color:#0A0A0C;font:700 10px/1.5 sans-serif;letter-spacing:.1em;text-transform:uppercase}
+  .warn.hide{display:none}
+</style>
+</head>
+<body>
+<div class="kicker">Slowsie x MIXR, staff only</div>
+<h1>R<em>!</em>OT WALL</h1>
+
+<div id="lockbar" class="locked">
+  <b id="lockLabel">Locked</b>
+  <span id="lockHint">Type the staff key and press Sign in. Nothing below works until you do.</span>
+</div>
+
+<div class="bar">
+  <input id="key" type="password" placeholder="Staff key" autocomplete="current-password"
+         enterkeyhint="go">
+  <button id="save">Sign in</button>
+  <a class="btn off" id="csv" href="#">Leads CSV</a>
+</div>
+<div class="bar">
+  <select id="surface">
+    <option value="brick">Brick</option><option value="concrete">Concrete</option>
+    <option value="subway">Subway</option><option value="grid">Grid</option>
+    <option value="plaster">Plaster</option>
+  </select>
+  <button id="setSurface" disabled>Set surface</button>
+  <button id="wipe" class="danger" disabled>Wipe wall</button>
+</div>
+
+<div class="bar">
+  <label style="flex:1 1 100%;display:flex;align-items:center;gap:9px;
+                font:700 12px/1.3 inherit;letter-spacing:.1em;color:#B6FF1A">
+    <input id="screenPanels" type="checkbox"
+           style="width:20px;height:20px;min-height:0;flex:none;accent-color:#FF1E8E">
+    Tracking panels ON THE SCREEN (no printing, calibrates itself)
+  </label>
+  <input id="screenHmm" type="number" inputmode="numeric" placeholder="Screen height mm">
+  <button id="setScreen" disabled>Save screen</button>
+</div>
+<div id="st"></div>
+
+<table>
+  <thead><tr><th>Tag</th><th>Dabs</th><th></th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<p class="note">
+  Nuke removes everything that person has painted and rebuilds the wall without
+  them, on every screen. Use it fast. It is easier to remove one good painter by
+  mistake than to leave something bad up in front of the room.
+</p>
+
+<h2>Panel positions, measure at load-in</h2>
+<p class="note" style="margin-top:0">
+  Every phone works out where it is aiming from whichever printed panel it can see,
+  so it has to know where each panel physically is. Hang them FLAT ON THE SAME WALL
+  AS THE SCREEN, upright, not angled in. Then measure from the CENTRE OF THE SCREEN
+  to the CENTRE OF EACH PANEL, in millimetres. Right and up are positive.
+  Guessing these is the fastest way to make the aim feel broken.
+</p>
+<div id="calWarn" class="warn hide">These are default numbers, nobody has measured yet</div>
+
+<div class="cal" style="margin-top:12px">
+  <div class="hd"></div><div class="hd">Screen width mm</div><div class="hd">Screen height mm</div><div class="hd"></div>
+  <div class="hd">Screen</div>
+  <input id="wallW" type="number" inputmode="numeric">
+  <input id="wallH" type="number" inputmode="numeric">
+  <div></div>
+  <div class="hd"></div><div class="hd">Left / right mm</div><div class="hd">Up / down mm</div><div class="hd">Panel height mm</div>
+</div>
+<div class="cal" id="calRows"></div>
+<canvas id="map" width="900" height="300"></canvas>
+<div class="bar" style="margin-top:12px">
+  <label style="flex:1 1 100%;display:flex;align-items:center;gap:8px;font:700 12px/1 inherit;letter-spacing:.1em;color:#B6FF1A">
+    <input id="measured" type="checkbox" style="width:20px;height:20px;min-height:0;accent-color:#FF1E8E">
+    These are real tape measurements, not guesses
+  </label>
+  <button id="saveCal">Save panel positions</button>
+</div>
+
+<script type="module">
+const $=s=>document.querySelector(s);
+let key=localStorage.getItem('riotKey')||'';
+let unlocked=false;
+$('#key').value=key;
+
+/* THE WHOLE PAGE WAS SILENTLY DEAD WITHOUT THE KEY. Every staff action posts
+   the key and 403s without it, and the only feedback was a line of small text
+   that cleared itself after four seconds, so Wipe wall genuinely looked like a
+   button that did nothing. Now the key is CHECKED on load, the lock state is a
+   full-width coloured bar, and every action is disabled until it is good. */
+const GATED = ['#setSurface','#wipe','#setScreen','#saveCal'];
+function setUnlocked(v){
+  unlocked=v;
+  $('#lockbar').className = v ? 'open' : 'locked';
+  $('#lockLabel').textContent = v ? 'Unlocked' : 'Locked';
+  $('#lockHint').textContent = v
+    ? 'Staff actions are live on this device. The key is remembered here.'
+    : 'Type the staff key and press Sign in. Nothing below works until you do.';
+  for(const s of GATED){ const el=$(s); if(el) el.disabled=!v; }
+  $('#csv').classList.toggle('off', !v);
+  $('#csv').href = v ? '/api/leads.csv?key='+encodeURIComponent(key) : '#';
+  document.querySelectorAll('.nuke').forEach(b=>{ if(b.textContent!=='Nuked') b.disabled=!v; });
+}
+async function checkKey(k){
+  if(!k) return false;
+  try{ return (await (await fetch('/api/auth?key='+encodeURIComponent(k))).json()).ok===true; }
+  catch{ return false; }
+}
+async function signIn(){
+  key=$('#key').value.trim();
+  const ok=await checkKey(key);
+  if(ok){ localStorage.setItem('riotKey',key); setUnlocked(true); say('Signed in. Staff actions are live.'); }
+  else { setUnlocked(false); say(key?'That staff key is wrong.':'Enter the staff key first.', true); }
+}
+$('#save').addEventListener('click', signIn);
+$('#key').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
+checkKey(key).then(ok=>{ setUnlocked(ok); if(ok) say('Signed in from this device.'); });
+
+function say(m, bad){
+  const el=$('#st'); el.textContent=m; el.className=bad?'bad':'good';
+  setTimeout(()=>{ if(el.textContent===m){ el.textContent=''; el.className=''; } },5000);
+}
+const post=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify(b)});
+/* one place that turns a 403 into an honest message instead of silence */
+async function act(path, body, okMsg){
+  if(!unlocked) return say('Sign in with the staff key first.', true);
+  let r; try{ r=await post(path,body); }catch{ return say('Could not reach the wall server.', true); }
+  if(r.ok){ say(okMsg); return r; }
+  if(r.status===403){ setUnlocked(false); say('That staff key is wrong.', true); }
+  else say('The wall server said no ('+r.status+').', true);
+  return null;
+}
+
+$('#setSurface').addEventListener('click',()=>
+  act('/api/surface',{surface:$('#surface').value,key},'Surface changed on the wall.'));
+
+$('#wipe').addEventListener('click',async()=>{
+  if(!unlocked) return say('Sign in with the staff key first.', true);
+  if(!confirm('Wipe the whole wall? The painters and their emails are kept.')) return;
+  if(await act('/api/wipe',{key},'Wall wiped.')){ /* the wall rebuilds itself over SSE */ }
+});
+
+/* SCREEN PANELS. The live default: the four tracking panels are drawn on the
+   venue screen, so nothing is printed and the calibration derives itself. Turn
+   it OFF once real printed panels are hung and the measured numbers below take
+   over. The screen height only affects the metres readout, never the aim. */
+$('#setScreen').addEventListener('click',()=>
+  act('/api/screenpanels',{on:$('#screenPanels').checked,
+    screenHmm:+$('#screenHmm').value||undefined, key},'Screen panel setting saved.'));
+fetch('/api/layout').then(r=>r.json()).then(l=>{
+  $('#screenPanels').checked=!!l.screenPanels; $('#screenHmm').value=l.screenHmm;
+}).catch(()=>{});
+
+const rows=$('#rows'); const seen=new Map();
+function row(p){
+  const tr=document.createElement('tr');
+  if(p.nuked) tr.className='gone';
+  const a=document.createElement('td'); a.textContent=p.handle;
+  const b=document.createElement('td'); b.className='n'; b.textContent=p.dabs||0;
+  const c=document.createElement('td');
+  const btn=document.createElement('button'); btn.className='nuke'; btn.textContent='Nuke';
+  btn.disabled=!unlocked;
+  btn.addEventListener('click',async()=>{
+    if(!unlocked) return say('Sign in with the staff key first.', true);
+    btn.disabled=true; btn.textContent='...';
+    const r=await act('/api/nuke',{u:p.id,key},'Removed '+p.handle+'.');
+    if(r){ tr.className='gone'; btn.textContent='Nuked'; }
+    else { btn.disabled=!unlocked; btn.textContent='Nuke'; }
+  });
+  c.appendChild(btn); tr.append(a,b,c);
+  return tr;
+}
+async function load(){
+  const j=await (await fetch('/api/state')).json();
+  $('#surface').value=j.surface||'brick';
+  for(const p of j.painters.slice().reverse()){
+    if(seen.has(p.id)){ seen.get(p.id).querySelector('td.n').textContent=p.dabs||0; continue; }
+    const tr=row(p); seen.set(p.id,tr); rows.prepend(tr);
+  }
+}
+load(); setInterval(load, 4000);
+const es=new EventSource('/api/stream');
+es.addEventListener('painter',()=>load());
+
+/* ---------- panel calibration ----------
+   Millimetres in, because that is what a tape measure gives. Everything the
+   phones need is derived server side from these four numbers per panel. */
+const PANELS=['panel1','panel2','panel3','panel4'];
+const F={};
+PANELS.forEach((n,i)=>{
+  const wrap=$('#calRows');
+  const lab=document.createElement('div'); lab.className='hd'; lab.style.font='700 13px/1 inherit';
+  lab.style.color='#fff'; lab.textContent='P'+(i+1);
+  const mk=id=>{ const el=document.createElement('input'); el.type='number';
+    el.inputMode='numeric'; el.id=n+'_'+id; el.addEventListener('input',drawMap); return el; };
+  F[n]={ x:mk('x'), y:mk('y'), h:mk('h') };
+  wrap.append(lab,F[n].x,F[n].y,F[n].h);
+});
+$('#wallW').addEventListener('input',drawMap);
+$('#wallH').addEventListener('input',drawMap);
+
+function readForm(){
+  const c={ measured:$('#measured').checked,
+    wall:{ widthMm:+$('#wallW').value||1440, heightMm:+$('#wallH').value||810 }, panels:{} };
+  for(const n of PANELS) c.panels[n]={ offXMm:+F[n].x.value||0, offYMm:+F[n].y.value||0,
+    heightMm:+F[n].h.value||594, on:true };
+  return c;
+}
+function fillForm(c){
+  $('#wallW').value=c.wall.widthMm; $('#wallH').value=c.wall.heightMm;
+  $('#measured').checked=!!c.measured;
+  $('#calWarn').classList.toggle('hide', !!c.measured);
+  for(const n of PANELS){ const p=c.panels[n]||{};
+    F[n].x.value=p.offXMm; F[n].y.value=p.offYMm; F[n].h.value=p.heightMm; }
+  drawMap();
+}
+
+/* A plan view of the wall, so a typo in the numbers is visible instead of
+   discovered later by a guest painting in the wrong place. */
+function drawMap(){
+  const c=readForm(), cv=$('#map'), g=cv.getContext('2d');
+  const W=cv.width, H=cv.height;
+  g.fillStyle='#08070a'; g.fillRect(0,0,W,H);
+  // fit everything, screen plus panels, with a margin
+  let maxX=c.wall.widthMm/2, maxY=c.wall.heightMm/2;
+  for(const n of PANELS){ const p=c.panels[n];
+    const pw=p.heightMm*0.75;                       // panels are 3:4 portrait
+    maxX=Math.max(maxX, Math.abs(p.offXMm)+pw/2);
+    maxY=Math.max(maxY, Math.abs(p.offYMm)+p.heightMm/2); }
+  const k=Math.min((W-40)/(maxX*2), (H-30)/(maxY*2));
+  const X=mm=>W/2+mm*k, Y=mm=>H/2-mm*k;
+  // the screen
+  g.strokeStyle='#B6FF1A'; g.lineWidth=2;
+  g.strokeRect(X(-c.wall.widthMm/2), Y(c.wall.heightMm/2),
+               c.wall.widthMm*k, c.wall.heightMm*k);
+  g.fillStyle='rgba(182,255,26,.10)';
+  g.fillRect(X(-c.wall.widthMm/2), Y(c.wall.heightMm/2), c.wall.widthMm*k, c.wall.heightMm*k);
+  g.fillStyle='rgba(182,255,26,.75)'; g.font='600 11px sans-serif'; g.textAlign='center';
+  g.fillText('SCREEN', W/2, H/2+4);
+  // the panels
+  PANELS.forEach((n,i)=>{
+    const p=c.panels[n], pw=p.heightMm*0.75;
+    const x=X(p.offXMm-pw/2), y=Y(p.offYMm+p.heightMm/2);
+    g.fillStyle='rgba(255,30,142,.22)'; g.strokeStyle='#FF1E8E'; g.lineWidth=2;
+    g.fillRect(x,y,pw*k,p.heightMm*k); g.strokeRect(x,y,pw*k,p.heightMm*k);
+    g.fillStyle='#fff'; g.font='700 13px sans-serif';
+    g.fillText('P'+(i+1), X(p.offXMm), Y(p.offYMm)+5);
+  });
+}
+
+$('#saveCal').addEventListener('click',async()=>{
+  const r=await act('/api/calib',{calib:readForm(),key},'Panel positions saved, every can updates.');
+  if(r) fillForm(await r.json());
+});
+fetch('/api/calib').then(r=>r.json()).then(fillForm).catch(()=>{});
+es.addEventListener('calib',e=>{ try{ fillForm(JSON.parse(e.data)); }catch{} });
+</script>
+</body>
+</html>

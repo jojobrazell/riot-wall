@@ -1,0 +1,1317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0A0A0C">
+<title>R!OT WALL, your can</title>
+<meta name="description" content="Point your phone at the wall and spray. Step closer for a fatter line.">
+<style>
+/* ==========================================================================
+   R!OT WALL: THE PASTE-UP, chromed.
+   One self contained file. No webfont, no CDN, no image request, no build step.
+
+   THE RULE THIS DESIGN LIVES OR DIES BY: nothing legible is ever composited
+   against the live camera. The reading layer is opaque printed paper and the
+   camera shows through the gaps between it. Contrast therefore does not depend
+   on the venue lighting op, on the LED wall going dark, or on a guest pointing
+   at a blown out screen. The day somebody puts the tag name or a numeral
+   straight over the video with a text shadow, this stops working in a dark room.
+
+   THREE CONTRACTS THAT SILENTLY BREAK IT:
+   1. clip-path CLIPS box-shadow. Torn elements get their edge pair as stacked
+      geometry, never as a shadow. Do not "simplify" that to a box-shadow.
+   2. .poster needs isolation:isolate or the plaid masked LED wash stops
+      blending. #hud must carry NO filter and NO isolation or #flash stops
+      blending onto the video and it looks like the trigger broke.
+   3. --chrome is declared on .metal, NOT on :root. A custom property containing
+      var() is substituted on the element where it is DECLARED, so moving it to
+      :root makes every per element --spec override dead code.
+   ========================================================================== */
+
+@property --spec{ syntax:'<percentage>'; inherits:true; initial-value:38%; }
+
+:root{
+  --wall:#0A0A0C; --toner:#14100E; --stock:#CFCBC0; --fibre:#E4E0D4; --dead:#B9B5AB;
+  --magenta:#FF1E8E; --acid:#B6FF1A; --purple:#7B2CFF; --fluoro:#FF6A00; --siren:#E01B24;
+  /* Raised across the board 2026-08-13: JoJo could not read the body copy on a
+     real phone. These are measured on --stock BEFORE the halftone multiplies
+     over them, which is the mistake the original numbers made. */
+  --ink-72:rgba(20,16,14,.86); --ink-66:rgba(20,16,14,.80); --ink-45:rgba(20,16,14,.45);
+
+  --spec:38%;
+  --lock:var(--siren);
+
+  --col:430px;
+  --r-plate:12px; --r-chip:10px; --r-slot:3px; --r-pill:9999px;
+
+  --key:0 0 0 1.5px rgba(10,10,12,.92);
+  --rim:inset 0 0 0 1px rgba(232,236,242,.50);
+  --band:inset 0 1.5px 0 rgba(255,255,255,.72);
+
+  --ui:"Archivo Condensed","Barlow Condensed","Avenir Next Condensed",
+       "Roboto Condensed","Arial Narrow","Helvetica Neue",system-ui,sans-serif;
+  --serif:Georgia,"Noto Serif","Times New Roman",serif;
+
+  --halftone:radial-gradient(circle at 50% 50%,rgba(20,16,14,.92) 0 1.5px,transparent 1.7px);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+
+  --plaid-a:repeating-linear-gradient(90deg,#000 0 11px,transparent 11px 17px,#000 17px 20px,transparent 20px 31px);
+  --plaid-b:repeating-linear-gradient(0deg,#000 0 11px,transparent 11px 17px,#000 17px 20px,transparent 20px 31px);
+
+  --tear-poster:polygon(0% 9px,5% 3px,11% 11px,17% 2px,23% 9px,29% 4px,36% 12px,42% 3px,48% 10px,54% 2px,60% 11px,66% 4px,72% 9px,78% 2px,84% 11px,90% 5px,96% 8px,100% 2px,100% calc(100% - 9px),95% calc(100% - 2px),89% calc(100% - 11px),83% calc(100% - 4px),77% calc(100% - 9px),71% calc(100% - 2px),64% calc(100% - 12px),58% calc(100% - 3px),52% calc(100% - 10px),46% calc(100% - 2px),40% calc(100% - 11px),34% calc(100% - 4px),27% calc(100% - 9px),21% calc(100% - 2px),15% calc(100% - 11px),9% calc(100% - 5px),4% calc(100% - 8px),0% calc(100% - 2px));
+  --tear-strip:polygon(0% 0%,100% 0%,100% calc(100% - 7px),94% calc(100% - 2px),88% calc(100% - 8px),81% calc(100% - 2px),74% calc(100% - 7px),67% calc(100% - 2px),60% calc(100% - 9px),53% calc(100% - 3px),46% calc(100% - 7px),39% calc(100% - 2px),32% calc(100% - 8px),25% calc(100% - 3px),18% calc(100% - 7px),11% calc(100% - 2px),5% calc(100% - 8px),0% calc(100% - 3px));
+  --tear-apron:polygon(0% 10px,6% 3px,13% 11px,20% 2px,27% 9px,34% 3px,41% 12px,48% 2px,55% 10px,62% 3px,69% 11px,76% 2px,83% 9px,90% 4px,96% 10px,100% 3px,100% 100%,0% 100%);
+  --tear-chip:polygon(0% 3px,12% 0,26% 4px,40% 0,55% 3px,70% 0,84% 4px,100% 1px,100% calc(100% - 3px),86% 100%,70% calc(100% - 4px),54% 100%,38% calc(100% - 3px),22% 100%,8% calc(100% - 4px),0% calc(100% - 1px));
+}
+
+/* THE SHARED SPECULAR HORIZON. One property re-lights every metal object.
+   Declared on .metal so each one recomputes the ramp from its OWN inherited
+   --spec: setting it on :root re-lights everything, on an element only itself. */
+.metal{
+  --chrome:linear-gradient(180deg,
+    #FDFEFF 0%,
+    #E8ECF2 calc(var(--spec) - 14%),
+    #AAB2BD calc(var(--spec) - 1%),
+    #FFFFFF var(--spec),
+    #FFFFFF calc(var(--spec) + 3.5%),
+    #7C8592 calc(var(--spec) + 4%),
+    #6B7280 72%,
+    #B98AA6 86%,
+    #F2A8CE 100%);
+}
+.metal.text{
+  background-image:var(--chrome);
+  -webkit-background-clip:text;background-clip:text;
+  color:transparent;-webkit-text-fill-color:transparent;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;height:100%;overflow:hidden;background:var(--wall);color:var(--stock);
+  font-family:var(--ui);font-stretch:87.5%;
+  touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+  -webkit-text-size-adjust:100%;
+}
+
+/* ---------- 1. THE STOCK. Three stacked layers ARE the paired edge:
+   near black key, bright fibre lip, printed face. ---------- */
+.stk{
+  position:absolute;inset:-1.5px;z-index:0;pointer-events:none;
+  background:rgba(10,10,12,.95);
+  clip-path:var(--tear,var(--tear-poster));
+}
+.stk::before{
+  content:"";position:absolute;inset:1.5px;
+  clip-path:var(--tear,var(--tear-poster));
+  background:var(--fibre);
+}
+.stk::after{
+  content:"";position:absolute;inset:5.5px 4.5px 3.5px 6.5px;
+  clip-path:var(--tear,var(--tear-poster));
+  background-color:var(--stock);
+  background-image:
+    linear-gradient(rgba(207,203,192,.94),rgba(207,203,192,.94)),
+    var(--grain);
+  background-size:auto,160px 160px;
+}
+/* The halftone MULTIPLIES, so it darkens the paper far more than it darkens the
+   near-black type sitting on it, and every step of opacity here costs real
+   contrast on the body copy. JoJo could not read the consent block at .38.
+   Texture is not worth losing the words: .24 still reads as photocopied paper. */
+.tone{
+  position:absolute;inset:5.5px 4.5px 3.5px 6.5px;z-index:1;pointer-events:none;
+  clip-path:var(--tear,var(--tear-poster));
+  background-image:var(--halftone);background-size:5px 5px;
+  mix-blend-mode:multiply;opacity:.24;
+}
+.tone.live{animation:toner .5s steps(1,end) infinite}
+@keyframes toner{
+  0%{background-position:0 0} 25%{background-position:2px 3px}
+  50%{background-position:-3px 2px} 75%{background-position:3px -2px}
+  100%{background-position:0 0}
+}
+.poster .stk,#prime .stk,#fatal .stk{filter:drop-shadow(0 12px 22px rgba(0,0,0,.62))}
+
+.tape{
+  position:absolute;z-index:3;width:92px;height:27px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.10) 38%,rgba(255,255,255,.28));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 14px rgba(0,0,0,.5);
+  -webkit-backdrop-filter:blur(.8px) saturate(.8) contrast(1.06);
+          backdrop-filter:blur(.8px) saturate(.8) contrast(1.06);
+  clip-path:polygon(3px 0,100% 0,calc(100% - 4px) 22%,100% 44%,calc(100% - 3px) 70%,100% 100%,4px 100%,0 74%,3px 48%,0 26%);
+}
+.tape.tl{left:-14px;top:-9px;transform:rotate(-7deg)}
+.tape.tr{right:-16px;top:-12px;transform:rotate(6.5deg)}
+.tape.ghost{right:22px;bottom:58px;transform:rotate(-14deg);background:rgba(20,16,14,.07);
+  box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.tape.flat{
+  -webkit-backdrop-filter:none;backdrop-filter:none;width:74px;height:22px;
+  background:linear-gradient(180deg,rgba(255,255,255,.26),rgba(255,255,255,.10) 40%,rgba(255,255,255,.22));
+}
+
+/* LED wash through a plaid gel. 60fps. It sweeps, it never blinks. */
+.wash{
+  position:absolute;inset:-14% -34%;z-index:2;pointer-events:none;mix-blend-mode:screen;
+  background:linear-gradient(102deg,transparent 20%,rgba(255,30,142,.62) 37%,rgba(255,30,142,.18) 50%,transparent 64%);
+  -webkit-mask-image:var(--plaid-a),var(--plaid-b);
+          mask-image:var(--plaid-a),var(--plaid-b);
+  -webkit-mask-composite:source-over;mask-composite:add;
+  animation:sweep 9.5s linear infinite;will-change:transform;
+}
+@keyframes sweep{from{transform:translate3d(-18%,0,0)}to{transform:translate3d(18%,0,0)}}
+
+/* ---------- 2. THE GATE ---------- */
+/* CENTRED, not bottom-anchored (JoJo 2026-08-13: "why is this so low?"). The
+   bottom anchor was for thumb reach, but on anything taller than a phone it
+   reads as the poster sinking into a sea of black. margin:auto on BOTH ends of
+   the column centres it, and when the viewport is shorter than the content the
+   auto margins collapse to zero, so nothing clips and the safety scroll works. */
+#gate{
+  position:fixed;inset:0;z-index:30;display:flex;justify-content:center;
+  padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 18px);
+  overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain;
+  background:
+    radial-gradient(130% 78% at 10% -12%,rgba(255,30,142,.15),transparent 58%),
+    radial-gradient(96% 72% at 92% 108%,rgba(123,44,255,.22),transparent 66%),
+    var(--wall);
+}
+#gate .col{width:100%;max-width:var(--col);margin:auto 0}
+/* NO SCROLLING on a phone: the poster compresses to fit a short viewport
+   instead of running past it. Every trim here is padding and lead, never type
+   below the legibility floor and never the 50px touch targets. */
+@media (max-height:760px){
+  .poster{padding:16px 18px 24px}
+  .markwrap{margin:8px 0 0}
+  .say{margin:9px 0 0;font-size:12px}
+  .two{margin-top:12px}
+  .consent{margin-top:9px;font-size:11px;line-height:1.4}
+  .err{min-height:16px;margin-top:5px}
+  .cta{min-height:54px;margin-top:-14px}
+}
+.poster{position:relative;isolation:isolate;padding:26px 22px 34px}
+/* The content layers need position:relative to take a z-index, but a bare `>*`
+   ALSO hits the paper layers and turns their position:absolute into relative,
+   which collapses them to zero height. The printed face then never renders and
+   the toner type sits on the black wall, invisible. Every `>*` rule in this file
+   excludes the stock explicitly for that reason. Do not simplify them back. */
+.poster>*:not(.stk):not(.tone):not(.wash):not(.tape){position:relative;z-index:4}
+
+.eyebrow{
+  display:inline-block;padding:5px 8px 4px;transform:rotate(-1.2deg);
+  background:var(--toner);color:var(--stock);clip-path:var(--tear-chip);
+  font:800 10.5px/1 var(--ui);letter-spacing:.34em;text-transform:uppercase;
+}
+
+/* The wordmark. The 7.5 stroke and the alpha threshold ARE the wordmark, not an
+   effect on it: they weld the glyphs and the drips into one wet mass, which is
+   what stops a system serif reading as a newspaper. Do not soften them.
+   Still a named pre-load-in job to trace it from the real licensed face. */
+.markwrap{position:relative;margin:14px 0 2px;transform:rotate(-1.6deg)}
+.mark{display:block;width:100%;height:auto}
+.mark .glyphs{font-family:var(--serif);font-weight:700;font-size:76px}
+.markwrap::after{
+  content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.6;
+  background-image:radial-gradient(circle at 50% 50%,rgba(228,224,212,.95) 0 1.1px,transparent 1.25px);
+  background-size:3.4px 3.4px;
+  -webkit-mask-image:linear-gradient(180deg,transparent 52%,#000 100%);
+          mask-image:linear-gradient(180deg,transparent 52%,#000 100%);
+}
+
+.say{margin:14px 0 2px;max-width:33ch;color:var(--toner);
+  font:600 13px/1.5 var(--ui);letter-spacing:.055em;text-transform:uppercase}
+
+/* THE TWO-UP ROW. One torn plate, two holes, one toner divider. Never stacks. */
+.two{position:relative;margin-top:18px;padding:12px 12px 14px;--tear:var(--tear-chip)}
+.two .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.34fr);
+  gap:0;align-items:end;position:relative;z-index:4}
+.two .cell{min-width:0;padding:0 10px}
+.two .cell+.cell{box-shadow:inset 2px 0 0 var(--toner)}
+@media (max-width:346px){
+  .two{padding:10px 8px 12px}
+  .two .grid{grid-template-columns:minmax(0,.88fr) minmax(0,1.42fr)}
+  .two .cell{padding:0 7px}
+}
+.fieldlab{display:flex;align-items:center;gap:5px;margin:0 0 5px 2px;color:var(--toner);
+  font:800 10px/1 var(--ui);letter-spacing:.2em;text-transform:uppercase}
+.cell:nth-child(1) .fieldlab{transform:rotate(-1.8deg)}
+.cell:nth-child(2) .fieldlab{transform:rotate(1.2deg)}
+.fieldlab svg{width:26px;height:12px;flex:0 0 auto;overflow:visible}
+.fieldlab svg path{fill:none;stroke:var(--toner);stroke-width:2.2;stroke-linecap:round}
+
+.gap{position:relative;padding:3px;background:var(--fibre);clip-path:var(--tear-chip)}
+.gap .hole{position:relative;background:var(--wall);clip-path:var(--tear-chip);
+  box-shadow:inset 0 4px 8px rgba(0,0,0,.9),inset 0 -2px 4px rgba(0,0,0,.7)}
+.gap input{
+  width:100%;min-height:50px;padding:0 12px;border:0;outline:none;background:transparent;
+  color:var(--fibre);caret-color:var(--magenta);
+  font:700 16px/50px var(--ui);letter-spacing:.1em;text-transform:uppercase;
+}
+.gap input::placeholder{color:rgba(207,203,192,.58);letter-spacing:.14em}
+.gap input[type=email]{text-transform:none;letter-spacing:.02em;font-weight:600}
+.gap:focus-within{background:var(--acid)}
+.gap:focus-within .hole{background:radial-gradient(90% 140% at 50% 130%,rgba(182,255,26,.30),transparent 68%),var(--wall)}
+.gap:focus-within input{caret-color:var(--acid)}
+.gap input:-webkit-autofill{
+  -webkit-text-fill-color:var(--fibre);caret-color:var(--magenta);
+  -webkit-box-shadow:inset 0 0 0 100px #0A0A0C !important;
+}
+
+.consent{margin-top:13px;color:var(--ink-66);font:600 12.5px/1.55 var(--ui);letter-spacing:.02em}
+.echo{display:block;margin-top:5px;color:var(--toner);word-break:break-all;
+  font:700 11.5px/1.45 var(--ui);letter-spacing:.06em}
+.echo:empty{display:none}
+
+.err{min-height:24px;margin-top:9px}
+.err:not(:empty){
+  display:inline-block;padding:2px 7px;transform:rotate(-.8deg);color:var(--toner);
+  background:linear-gradient(180deg,transparent 12%,var(--magenta) 12% 90%,transparent 90%);
+  clip-path:polygon(2px 0,100% 3px,calc(100% - 3px) 100%,0 calc(100% - 2px));
+  font:700 12.5px/1.5 var(--ui);letter-spacing:.09em;text-transform:uppercase;
+}
+
+/* the one slick object on the page. Pill radius, straddling the bottom tear. */
+.cta{
+  position:relative;z-index:5;display:block;width:calc(100% - 20px);margin:-16px 10px 0;
+  min-height:60px;border:0;border-radius:var(--r-pill);cursor:pointer;transition:none;
+  background-color:var(--magenta);color:var(--toner);
+  font:800 16px/1 var(--ui);letter-spacing:.24em;text-transform:uppercase;
+  box-shadow:0 10px 0 rgba(10,10,12,.9),0 18px 34px rgba(255,30,142,.34),
+             var(--band),inset 0 -3px 0 rgba(10,10,12,.22),var(--key);
+}
+.cta::after{
+  content:"";position:absolute;left:0;right:0;top:0;height:46%;border-radius:var(--r-pill) var(--r-pill) 0 0;
+  background-image:var(--chrome);opacity:.20;pointer-events:none;mix-blend-mode:screen;
+}
+.cta:active{transform:translateY(6px);
+  box-shadow:0 4px 0 rgba(10,10,12,.9),0 8px 18px rgba(255,30,142,.4),var(--band),var(--key)}
+.cta:disabled{background-color:var(--dead);color:var(--ink-45);box-shadow:0 6px 0 rgba(10,10,12,.7),var(--key)}
+
+/* THE PRIME CARD. A stranger in a dark room reads a bare OS camera alert as a
+   trap and hits deny, and that is where the queue actually stalls. */
+#prime{display:none;position:relative;padding:24px 22px 34px}
+#prime.on{display:block}
+#prime>*:not(.stk):not(.tone):not(.tape){position:relative;z-index:4}
+#prime .line{color:var(--toner);font:600 14px/1.45 var(--ui);letter-spacing:.05em;
+  text-transform:uppercase;margin:12px 0 0;max-width:30ch;position:relative;z-index:4}
+#prime .fine{margin-top:12px;color:var(--ink-66);font:500 10px/1.4 var(--ui);
+  letter-spacing:.08em;text-transform:uppercase;position:relative;z-index:4}
+/* the base .cta carries side margins so it can straddle the poster tear. On the
+   prime card it sits INSIDE the paper, so those margins have to go or it hangs
+   off the right edge. */
+#prime .cta{min-height:56px;margin:18px 0 0;width:100%}
+
+/* ---------- 3. THE CAN. Paper taped over live video. ---------- */
+#view{position:fixed;inset:0;background:#000}
+@media (min-width:640px){
+  #view{left:50%;right:auto;width:var(--col);transform:translateX(-50%);
+    box-shadow:0 0 0 1px rgba(232,236,242,.14),0 0 90px rgba(255,30,142,.16)}
+}
+#cam{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;inset:0;pointer-events:none}
+.hcol{position:relative;width:100%;max-width:var(--col);height:100%;margin:0 auto}
+
+#flash{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;mix-blend-mode:screen;
+  background:radial-gradient(120% 78% at 50% 96%,rgba(255,30,142,.9),rgba(255,30,142,0) 60%)}
+.firing #flash{animation:washdecay .9s linear 1 forwards}
+@keyframes washdecay{0%{opacity:1}100%{opacity:0}}
+
+#top{position:absolute;z-index:4;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 10px);
+  display:flex;align-items:center;gap:10px;padding:9px 12px 14px;--tear:var(--tear-strip)}
+#top>*:not(.stk):not(.tone):not(.tape){position:relative;z-index:4}
+#who{flex:1 1 auto;min-width:0;color:var(--toner)}
+#who .cap{display:block;margin-bottom:2px;color:var(--ink-66);
+  font:800 9.5px/1.2 var(--ui);letter-spacing:.26em;text-transform:uppercase}
+#whoName{display:block;font:800 15px/1 var(--ui);letter-spacing:.14em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+#lock{flex:0 0 auto;max-width:52%;text-align:right;padding:7px 9px 8px;
+  clip-path:var(--tear-chip);background:var(--toner);color:var(--stock);
+  font:800 11px/1.05 var(--ui);letter-spacing:.13em;text-transform:uppercase}
+#lock small{display:block;margin-top:3px;opacity:.86;font:700 9.5px/1.1 var(--ui);
+  letter-spacing:.1em;font-variant-numeric:tabular-nums}
+#lock.on{background:var(--acid);color:var(--toner)}
+#lock.weak{background:var(--fluoro);color:var(--toner)}
+
+#cal{display:none;position:absolute;z-index:4;left:12px;right:12px;
+  top:calc(env(safe-area-inset-top) + 84px);padding:9px 12px 14px 48px;color:var(--toner);
+  font:800 10px/1.35 var(--ui);letter-spacing:.14em;text-transform:uppercase;
+  --tear:var(--tear-strip)}
+#cal.on{display:block}
+#cal .stk::after{background-color:var(--fluoro);background-image:none}
+#cal .stk::before{background:#FFC48A}
+#cal::before{
+  content:"";position:absolute;z-index:4;left:12px;top:9px;bottom:15px;width:26px;
+  background-image:
+    repeating-linear-gradient(90deg,var(--toner) 0 5px,transparent 5px 9px,var(--toner) 9px 11px,transparent 11px 17px),
+    repeating-linear-gradient(0deg,var(--toner) 0 5px,transparent 5px 9px,var(--toner) 9px 11px,transparent 11px 17px);
+}
+
+/* registration mark. Open centre, so the underlay never covers the pixel the
+   guest is placing paint on, and the light line is only ever next to black. */
+#reg{position:absolute;z-index:3;left:50%;top:50%;width:96px;height:96px;
+  transform:translate(-50%,-50%);pointer-events:none;
+  filter:drop-shadow(0 0 3px rgba(10,10,12,.95))}
+#reg .under{stroke:#0A0A0C;stroke-width:6.5;opacity:.92}
+#reg .over{stroke:var(--stock);stroke-width:2.2}
+/* aiming somewhere that is not the painting surface: the mark goes hollow and
+   siren, so it is obvious at a glance that paint will not land */
+#reg.off .over{stroke:var(--siren)}
+#reg.off{opacity:.75}
+
+#ring{position:absolute;z-index:3;left:50%;top:50%;width:44px;height:44px;border-radius:50%;
+  transform:translate(-50%,-50%);border:3px solid var(--ink,#FF1E8E);
+  box-shadow:inset 0 0 0 2px rgba(10,10,12,.92),0 0 0 2px rgba(10,10,12,.92),
+             0 0 0 3.5px rgba(207,203,192,.85),0 0 0 5px rgba(10,10,12,.55);
+  transition:width .09s steps(3),height .09s steps(3)}
+
+#wallbox{position:absolute;z-index:2;opacity:0;transition:opacity .12s linear}
+#wallbox u{position:absolute;width:22px;height:22px}
+#wallbox u::before,#wallbox u::after{content:"";position:absolute;background:#E8ECF2;
+  box-shadow:0 0 0 1.5px rgba(10,10,12,.92)}
+#wallbox u::before{width:22px;height:2.5px}
+#wallbox u::after{width:2.5px;height:22px}
+#wallbox u:nth-child(1){left:-2px;top:-2px}
+#wallbox u:nth-child(2){right:-2px;top:-2px;transform:scaleX(-1)}
+#wallbox u:nth-child(3){left:-2px;bottom:-2px;transform:scaleY(-1)}
+#wallbox u:nth-child(4){right:-2px;bottom:-2px;transform:scale(-1)}
+
+/* padding-top clears the apron's torn edge, which dips 12px in. At 16px the
+   hint sat half on the tear and was unreadable. */
+#bottom{position:absolute;z-index:4;left:0;right:0;bottom:0;pointer-events:auto;
+  padding:26px 12px calc(env(safe-area-inset-bottom) + 10px);--tear:var(--tear-apron)}
+#bottom .stk{filter:none}
+#bottom .scrim{position:absolute;z-index:-1;left:0;right:0;bottom:0;top:-40px;
+  background:linear-gradient(0deg,rgba(0,0,0,.62),transparent)}
+#bottom>*:not(.stk):not(.tone):not(.scrim){position:relative;z-index:4}
+#bottom.collapsed .hint,#bottom.collapsed .meter,#bottom.collapsed .nozzles,
+#bottom.collapsed #wheelWrap{display:none}
+#bottom.collapsed{padding-top:14px}
+
+.hint{margin:0 0 9px;height:14px;text-align:center;color:var(--ink-72);
+  font:700 10.5px/1.3 var(--ui);letter-spacing:.18em;text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* eight hard segments. They read at a glance over moving video; a filled bar
+   does not, and a smooth bar also reads as a progress indicator. */
+.meter{display:flex;align-items:center;gap:9px;height:22px;margin-bottom:11px}
+.segs{flex:1 1 auto;display:flex;gap:3px}
+.segs i{flex:1;height:10px;border-radius:var(--r-slot);background:transparent;
+  box-shadow:inset 0 0 0 1.5px var(--toner)}
+.segs i.on{background:var(--magenta);mix-blend-mode:multiply}
+.dist{flex:0 0 auto;padding:4px 8px 5px;background:var(--toner);
+  clip-path:polygon(0 1px,30% 0,66% 2px,100% 0,100% calc(100% - 1px),68% 100%,32% calc(100% - 2px),0 100%)}
+.dist b{font:800 15px/1 var(--ui);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.dist s{margin-left:3px;text-decoration:none;color:#8A9099;font:700 9.5px/1 var(--ui);letter-spacing:.14em}
+
+.nozzles{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:11px}
+.noz{position:relative;min-height:48px;padding:5px 2px 4px;border:0;cursor:pointer;transition:none;
+  border-radius:var(--r-pill);overflow:hidden;background-color:var(--stock);color:var(--toner);
+  box-shadow:var(--key),var(--rim),0 2px 0 rgba(10,10,12,.55);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font:800 10px/1 var(--ui);letter-spacing:.06em;text-transform:uppercase}
+.noz svg{width:22px;height:11px;overflow:visible}
+.noz svg path{fill:none;stroke:var(--toner);stroke-linecap:round}
+.noz[aria-pressed=true]{background-color:var(--magenta);
+  box-shadow:var(--key),var(--rim),0 2px 0 rgba(10,10,12,.85),0 0 16px rgba(255,30,142,.5)}
+.noz[aria-pressed=true]::before{content:"";position:absolute;left:0;right:0;top:0;height:42%;
+  background-image:var(--chrome);opacity:.22;mix-blend-mode:screen;pointer-events:none}
+.noz:active{transform:translateY(2px)}
+
+.fire{display:flex;align-items:center;gap:10px}
+#wheelWrap{position:relative;flex:0 0 auto;width:58px;height:58px;border-radius:50%;
+  overflow:hidden;touch-action:none;
+  box-shadow:0 0 0 3px var(--toner),0 0 0 4.5px #E8ECF2,0 0 0 6px #6B7280,
+             0 0 0 7.5px #E8ECF2,0 3px 0 rgba(10,10,12,.6)}
+#wheel{width:100%;height:100%;display:block}
+#dot{position:absolute;left:50%;top:50%;width:13px;height:13px;border-radius:50%;
+  border:2px solid #E8ECF2;transform:translate(-50%,-50%);pointer-events:none;
+  box-shadow:0 0 0 1.5px rgba(10,10,12,.95),inset 0 0 0 1.5px rgba(10,10,12,.95)}
+
+/* the trigger explains itself, so a one handed guest never has to read the top
+   of the screen to find out why nothing is happening */
+/* ONE CIRCLE TO SPRAY (JoJo ruling 2026-08-13: hide the options, just a circle
+   to press, the rest behind a menu). The trigger still explains itself: label
+   and rim carry the lock state, so nobody reads the top of the screen. */
+.fire{justify-content:space-between}
+#spray{position:relative;flex:0 0 auto;width:104px;height:104px;border:0;border-radius:50%;
+  cursor:pointer;touch-action:none;transition:none;overflow:hidden;
+  background-color:var(--magenta);color:var(--toner);
+  font:800 13px/1.15 var(--ui);letter-spacing:.12em;text-transform:uppercase;
+  box-shadow:0 6px 0 rgba(10,10,12,.9),0 12px 24px rgba(255,30,142,.35),
+             var(--band),var(--key),inset 0 0 0 3px var(--lock)}
+#spray::before{content:"";position:absolute;left:0;right:0;top:0;height:46%;
+  border-radius:50% 50% 0 0;
+  background-image:var(--chrome);opacity:.20;mix-blend-mode:screen;pointer-events:none}
+
+/* the two side buttons: the kit and the colour. Round, paper, quiet. */
+#menuBtn,#colorBtn{flex:0 0 auto;width:58px;height:58px;border:0;border-radius:50%;
+  cursor:pointer;background-color:var(--stock);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--key),var(--rim),0 3px 0 rgba(10,10,12,.6)}
+#menuBtn svg{width:24px;height:18px}
+#menuBtn svg path{fill:none;stroke:var(--toner);stroke-linecap:round}
+#menuBtn:active,#colorBtn:active{transform:translateY(2px)}
+#colorChip{display:block;width:26px;height:26px;border-radius:50%;background:var(--magenta);
+  box-shadow:0 0 0 2px var(--toner),0 0 0 3.5px #E8ECF2;pointer-events:none}
+
+/* the kit sheet, closed unless #bottom carries .open */
+#sheet{display:none}
+#bottom.open #sheet{display:block}
+.palrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.chipbtn{flex:1 1 auto;min-height:48px;border:0;cursor:pointer;
+  clip-path:var(--tear-chip);background:var(--toner);color:var(--stock);
+  font:800 12px/1 var(--ui);letter-spacing:.2em;text-transform:uppercase}
+.chipbtn:active{background:#2a2320}
+.chipbtn.wide{display:block;width:100%;margin-bottom:12px}
+
+/* SEE THE WALL: a snapshot of the shared wall with YOUR paint at full strength
+   and everyone else faded, because "which bit is mine" is the actual question. */
+#wallview{position:fixed;inset:0;z-index:36;display:none;align-items:center;
+  justify-content:center;padding:18px;background:rgba(5,5,6,.88)}
+#wallview.on{display:flex}
+#wallview .card{position:relative;width:100%;max-width:430px;padding:14px 12px 12px}
+#wallview .card>*:not(.stk):not(.tone){position:relative;z-index:4}
+#wvCanvas{display:block;width:100%;height:auto;clip-path:var(--tear-chip)}
+#wallview .cap{margin:9px 2px 8px;color:var(--ink-72);
+  font:700 10px/1.5 var(--ui);letter-spacing:.14em;text-transform:uppercase}
+#wvClose{display:block;width:100%;min-height:48px;border:0;border-radius:var(--r-pill);
+  cursor:pointer;background-color:var(--magenta);color:var(--toner);
+  font:800 13px/1 var(--ui);letter-spacing:.2em;text-transform:uppercase;
+  box-shadow:var(--band),var(--key)}
+#spray:disabled{background-color:var(--dead);color:var(--ink-45);
+  box-shadow:0 4px 0 rgba(10,10,12,.55),var(--key),inset 0 0 0 3px var(--siren)}
+#spray.on{background-color:var(--toner);color:var(--stock);transform:translateY(4px);
+  box-shadow:0 2px 0 rgba(10,10,12,.9),0 0 40px rgba(255,30,142,.75),
+             inset 0 0 0 2px var(--magenta),var(--key)}
+
+/* The readout is for load-in and for telling someone on the phone what is wrong.
+   Opaque, not translucent: it has to be readable over a bright camera frame,
+   which is the same rule the rest of the HUD follows. */
+#dbg{position:absolute;z-index:5;left:6px;right:6px;bottom:calc(100% + 10px);display:none;
+  padding:8px 10px;background:#0A0A0C;border:1.5px solid #B6FF1A;color:var(--acid);
+  font:600 11px/1.45 ui-monospace,monospace;white-space:pre-wrap;word-break:break-word}
+#dbg.on{display:block}
+
+/* the dead end. Same stock as everything else, so a failure still looks made. */
+#fatal{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  padding:24px 16px;background:var(--wall)}
+#fatal.on{display:flex}
+#fatal .card{position:relative;width:100%;max-width:var(--col);padding:26px 22px 30px}
+#fatal .card>*:not(.stk):not(.tone):not(.tape){position:relative;z-index:4}
+#fatal p{margin:14px 0 0;color:var(--toner);font:600 14px/1.5 var(--ui);
+  letter-spacing:.05em;text-transform:uppercase}
+
+/* ---------- 4. MOTION. THE STAMP: hard cut in, slow decay out.
+   Paper moves at 8fps, light at 60fps, both from one pointerdown. ---------- */
+:root{transition:--spec 900ms linear}
+:root.flare{--spec:54%;transition:none}
+.firing #top,.firing #bottom,.firing .poster{animation:jolt .25s steps(2) 1}
+@keyframes jolt{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(1px,-1.5px,0)}}
+
+/* ---------- 5. REDUCED MOTION. Every animated thing keeps a readable
+   static state, because none of them carry meaning through movement. ---------- */
+@media (prefers-reduced-motion:reduce){
+  .wash{animation:none;transform:translate3d(6%,0,0)}
+  .tone.live{animation:none}
+  .firing #top,.firing #bottom,.firing .poster{animation:none}
+  .firing #flash{animation:none;opacity:.5}
+  :root,:root.flare{transition:none}
+  *,*::before,*::after{transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="col">
+
+    <div class="poster" id="poster">
+      <div class="stk"></div><div class="tone live"></div><div class="wash"></div>
+      <i class="tape tl"></i><i class="tape tr"></i><i class="tape ghost"></i>
+
+      <span class="eyebrow">SLOWSIE X MIXR</span>
+
+      <div class="markwrap">
+        <svg class="mark" viewBox="0 0 348 104" role="img" aria-label="R!OT WALL"
+             preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="wet" x="-10%" y="-14%" width="120%" height="145%"
+                    color-interpolation-filters="sRGB">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.2" result="b"/>
+              <feColorMatrix in="b" type="matrix"
+                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11"/>
+            </filter>
+          </defs>
+          <g filter="url(#wet)" fill="#14100E" stroke="#14100E" stroke-width="7.5"
+             stroke-linejoin="round" stroke-linecap="round" paint-order="stroke fill">
+            <!-- textLength is the ONLY thing stopping a system serif we do not
+                 control from overrunning the box, and it is load bearing: the
+                 face resolves to Georgia on iOS and Noto Serif on most Android,
+                 which are different widths. A per-glyph y list (the "set off
+                 baseline so it reads as done fast" idea) makes Chrome position
+                 every glyph individually and SILENTLY IGNORE textLength, which
+                 clipped this to "R!OTW". The tilt on .markwrap carries the
+                 done-fast feel instead. Do not add a y or x list back. -->
+            <text class="glyphs" x="174" y="70" text-anchor="middle"
+                  textLength="318" lengthAdjust="spacingAndGlyphs">R!OT WALL</text>
+            <path d="M63 58c2.6 10 4.2 17.6 4.6 23 .5 6.6-8.4 6.6-8 0 .4-5.4 1.6-13 3.4-23z"/>
+            <ellipse cx="63.4" cy="93" rx="3.1" ry="3.7"/>
+          </g>
+        </svg>
+      </div>
+
+      <p class="say">YOUR PHONE IS A SPRAY CAN. POINT IT AT THE WALL AND HOLD THE BUTTON.
+        STEP CLOSER FOR A FATTER LINE.</p>
+
+      <div class="two">
+        <div class="stk"></div><div class="tone"></div>
+        <div class="grid">
+          <div class="cell">
+            <label class="fieldlab" for="handle">TAG NAME
+              <svg viewBox="0 0 40 18" aria-hidden="true"><path d="M2 3c8 1 13 5 15 9M17 12l-5.4.6M17 12l1-5.4"/></svg>
+            </label>
+            <div class="gap"><div class="hole">
+              <input id="handle" type="text" maxlength="18" autocomplete="nickname"
+                     autocapitalize="characters" spellcheck="false" placeholder="GRL CRUSH">
+            </div></div>
+          </div>
+          <div class="cell">
+            <label class="fieldlab" for="email">EMAIL
+              <svg viewBox="0 0 40 18" aria-hidden="true"><path d="M2 4c9 0 14 4 16 8M18 12l-5.6.2M18 12l.6-5.6"/></svg>
+            </label>
+            <div class="gap"><div class="hole">
+              <input id="email" type="email" inputmode="email" autocomplete="email"
+                     autocapitalize="off" spellcheck="false" placeholder="you@email.com">
+            </div></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="consent">WE EMAIL YOU THE FINISHED WALL AFTER THE NIGHT. NOBODY ELSE GETS
+        YOUR ADDRESS. THE CAMERA ONLY SEES WHERE YOU POINT. NOTHING IS RECORDED.
+        <b class="echo" id="echo"></b></p>
+
+      <div class="err" id="gateErr" role="alert"></div>
+    </div>
+
+    <button class="cta metal" id="go">GRAB A CAN</button>
+
+    <div id="prime">
+      <div class="stk"></div><div class="tone live"></div>
+      <i class="tape tl"></i>
+      <span class="eyebrow" style="position:relative;z-index:4">ONE MORE THING</span>
+      <p class="line">YOUR PHONE IS ABOUT TO ASK FOR THE CAMERA. SAY YES.
+        IT ONLY SEES WHERE YOU POINT. NOTHING IS RECORDED.</p>
+      <button class="cta metal" id="allow">TURN ON THE CAMERA</button>
+      <p class="fine">IF YOU SAID NO, OPEN SETTINGS AND TURN THE CAMERA BACK ON.</p>
+    </div>
+
+  </div>
+</div>
+
+<div id="view">
+  <canvas id="cam"></canvas>
+
+  <div id="hud">
+    <div id="flash"></div>
+    <div class="hcol">
+
+      <div id="top">
+        <div class="stk"></div><div class="tone"></div>
+        <i class="tape tl flat"></i><i class="tape tr flat"></i>
+        <div id="who"><span class="cap">YOUR CAN</span><span id="whoName"></span></div>
+        <div id="lock">FIND A PANEL<small>POINT AT A PRINTED PANEL</small></div>
+      </div>
+
+      <div id="cal"><div class="stk"></div><div class="tone"></div>
+        <span style="position:relative;z-index:4">PANELS NOT MEASURED YET, AIM IS ROUGH</span></div>
+
+      <svg id="reg" viewBox="0 0 96 96" aria-hidden="true">
+        <g fill="none" stroke-linecap="round">
+          <g class="under">
+            <circle cx="48" cy="48" r="17"/>
+            <path d="M48 4v22M48 70v22M4 48h22M70 48h22"/>
+            <path d="M31 31l6 6M65 31l-6 6M31 65l6-6M65 65l-6-6"/>
+          </g>
+          <g class="over">
+            <circle cx="48" cy="48" r="17"/>
+            <path d="M48 4v22M48 70v22M4 48h22M70 48h22"/>
+            <path d="M31 31l6 6M65 31l-6 6M31 65l6-6M65 65l-6-6"/>
+          </g>
+        </g>
+      </svg>
+      <div id="ring"></div>
+      <div id="wallbox"><u></u><u></u><u></u><u></u></div>
+
+      <div id="bottom">
+        <div class="scrim"></div><div class="stk"></div><div class="tone"></div>
+        <div id="dbg"></div>
+
+        <div class="hint" id="hint">POINT AT A PANEL BESIDE THE WALL</div>
+
+        <!-- THE KIT SHEET. Everything that is not the trigger lives in here,
+             closed by default: one hand, one thumb, one circle to hold. -->
+        <div id="sheet">
+          <div class="meter">
+            <div class="segs" id="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="dist"><b class="metal text" id="distNum">0.0</b><s>M</s></div>
+          </div>
+
+          <div class="nozzles">
+            <button class="noz metal" data-n="solid" aria-pressed="true">
+              <svg viewBox="0 0 22 11"><path d="M1 5.5h20" stroke-width="1.6"/></svg>MARKER</button>
+            <button class="noz metal" data-n="fat">
+              <svg viewBox="0 0 22 11"><path d="M1 5.5h20" stroke-width="6"/></svg>FAT</button>
+            <button class="noz metal" data-n="splatter">
+              <svg viewBox="0 0 22 11"><path d="M3 4h.1M8 8h.1M13 3h.1M18 7h.1M11 6h.1" stroke-width="3.4"/></svg>SPLAT</button>
+            <button class="noz metal" data-n="wet">
+              <svg viewBox="0 0 22 11"><path d="M1 3h20M6 3v6M15 3v4" stroke-width="2.2"/></svg>WET</button>
+            <button class="noz metal" data-n="streak">
+              <svg viewBox="0 0 22 11"><path d="M1 3h20M1 6h20M1 9h20" stroke-width="1.4"/></svg>STREAK</button>
+          </div>
+
+          <div class="palrow">
+            <div id="wheelWrap"><canvas id="wheel" width="64" height="64"></canvas><div id="dot"></div></div>
+            <button id="undo" class="chipbtn">UNDO MY LAST</button>
+          </div>
+          <button id="seeWall" class="chipbtn wide">SEE THE WALL</button>
+        </div>
+
+        <div class="fire">
+          <button id="menuBtn" aria-label="Open the kit">
+            <svg viewBox="0 0 22 16" aria-hidden="true"><path d="M1 2h20M1 8h15M1 14h20" stroke-width="2.4"/></svg>
+          </button>
+          <button id="spray" class="metal" disabled>FIND A PANEL</button>
+          <button id="colorBtn" aria-label="Colour"><i id="colorChip"></i></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="fatal">
+  <div class="card">
+    <div class="stk"></div><div class="tone"></div><i class="tape tl"></i>
+    <span class="eyebrow">NO CAN</span>
+    <p id="fatalMsg"></p>
+  </div>
+</div>
+
+<div id="wallview">
+  <div class="card">
+    <div class="stk" style="--tear:var(--tear-chip)"></div><div class="tone" style="--tear:var(--tear-chip)"></div>
+    <canvas id="wvCanvas" width="860" height="484"></canvas>
+    <div class="cap">YOURS AT FULL STRENGTH, EVERYONE ELSE FADED. TAP THE PICTURE TO REFRESH.</div>
+    <button id="wvClose">BACK TO THE CAN</button>
+  </div>
+</div>
+
+<script type="module">
+/* THE CAN. Point the phone at a printed panel beside the screen, hold the
+   button, paint the shared wall.
+
+   TWO AIMERS, in this order:
+     track.js  locks a printed Girl Riot panel and gets true 6DoF pose, which
+               gives exact aim at any phone roll and a real distance in metres.
+     aim.js    the fallback. Finds the bright screen rectangle when no panel is
+               in frame, so the can never goes dead.
+
+   The 8th Wall engine owns the camera, so there is no <video> here. It draws the
+   feed straight into #cam, and the fallback samples that same canvas. */
+import { createTracker, loadTargets, sizeFromDistance, RANGE_M,
+         whenEngineReady, engineState, enableOrientation } from './track.js?v=5';
+import { createAimer, sizeFromFill } from './aim.js?v=5';
+import { spray } from './spray.js?v=3';
+import { drawSurface, drawRelief } from './surface.js?v=3';
+
+/* iOS double-tap and pinch zoom, killed. user-scalable=no has been ignored by
+   iOS for years, and one accidental double tap left JoJo zoomed into a corner
+   with no way back. The 350ms window only eats the SECOND tap of a double, so
+   single taps and buttons are untouched. */
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const n = Date.now();
+  if (n - lastTouchEnd < 350) e.preventDefault();
+  lastTouchEnd = n;
+}, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
+
+const $=s=>document.querySelector(s);
+const Q = new URLSearchParams(location.search);
+const SIM = Q.has('sim');                 // drive poses by hand, no engine, no camera
+const NOPANEL = Q.has('nopanel');         // sim the panels being out of frame
+/* DESK TEST. Normally the panels hang BESIDE the screen, so aiming at a panel
+   computes a point outside the wall and correctly paints nothing. On a desk
+   there is no screen next to the panel, so pointing at the panel looks broken
+   when it is working. ?panelwall=1 makes the panel ITSELF the whole wall: aim at
+   its top left corner and paint lands top left. Proves the entire chain with no
+   tape measure. The wall is 16:9 and a panel is 3:4, so strokes come out
+   stretched sideways; that is the mode, not a bug. */
+const PANELWALL = Q.has('panelwall');
+/* One panel mapped onto the entire wall. A 1200x1600 wall carrying a 1600mm tall
+   panel centred on it gives cx=0.5, cy=0.5, hFrac=1 and aspect=0.75, so the
+   panel's own corners land exactly on the wall's corners. Declared HERE, above
+   createTracker, because a const used before its declaration throws. */
+/* ?panelwall=297 also makes the METRES readout true, by telling it how tall the
+   paper actually is (A4 is 297mm, A3 420, A2 594). Without a number the mapping
+   still works and only the distance is meaningless. */
+const PW_H = Math.max(20, Number(Q.get('panelwall')) || 1600);
+const PANELWALL_CALIB = { measured:true, wall:{ widthMm:PW_H*0.75, heightMm:PW_H },
+  panels:Object.fromEntries(['panel1','panel2','panel3','panel4'].map(n =>
+    [n, { offXMm:0, offYMm:0, heightMm:PW_H, on:true }])) };
+const root = document.documentElement;
+const cam=$('#cam');
+let me=null, color='#FF1E8E', nozzle='solid';
+let lock=false, size=1, mode='none';      // 'panel' | 'screen' | 'none'
+let spraying=false, strokeStart=false, batch=[], sending=false;
+let lastAim=null, lastCalFetch=0, unlockedSince=0;
+
+if (Q.has('dbg')) $('#dbg').classList.add('on');
+
+/* ---------- engine ----------
+   Loaded here rather than in the markup so ?sim=1 never pulls a 1MB script it
+   does not use. data-preload-chunks="slam" is what registers XR8.XrController in
+   this build; any other chunk name logs "unknown chunk" and leaves it null. */
+if (!SIM) {
+  const s = document.createElement('script');
+  s.async = true; s.src = 'engine/xr.js';
+  s.setAttribute('data-preload-chunks', 'slam');
+  document.head.appendChild(s);
+}
+
+/* Targets are fetched NOW, at page load, not on the tap. An awaited fetch inside
+   the tap handler spends the user gesture and iOS then refuses the camera. */
+const targetsReady = SIM ? Promise.resolve({ targets: [], bad: [] }) : loadTargets();
+
+/* Nothing about the camera path is allowed to fail silently. An uncaught throw
+   or an engine error inside an awaited handler surfaces NOWHERE, and on a phone
+   that is a black screen with no message, which is the worst thing that can
+   happen at a venue. Everything lands in lastError and on the HUD. */
+let lastError = '';
+function noteError(what){ lastError = String(what || '').slice(0, 160); }
+addEventListener('error', e => noteError('js: ' + (e.message || e.type)));
+addEventListener('unhandledrejection', e => noteError('promise: ' +
+  ((e.reason && e.reason.message) || e.reason)));
+addEventListener('xrerror', e => {
+  const d = (e && e.detail) || {};
+  noteError('xr: ' + ((d.error && d.error.message) || d.message || 'camera or tracking failed'));
+});
+
+const tracker = createTracker({ canvas: cam, targets: targetsReady,
+  calib: PANELWALL ? PANELWALL_CALIB : undefined,
+  onStatus: m => console.log('[riot]', m) });
+const aimer = createAimer();
+
+/* ---------- aim smoothing ----------
+   A fixed smoothing factor forces a bad trade: light smoothing is jittery when
+   you hold still (every hand tremor lands on the wall), heavy smoothing drags
+   when you sweep. The One Euro filter adapts its cutoff to how fast the aim is
+   MOVING: near-still aim gets filtered hard, a fast sweep passes straight
+   through. This is the standard fix for hand-held pointing jitter, and it is
+   why the raw (smoothing=1) values are requested from both aimers below: ONE
+   shared filter smooths whichever source is live, so even the handover between
+   panel tracking and the fallback glides instead of snapping. */
+function makeEuro(minCut, beta, dCut){
+  let x=null, dx=0, t=null;
+  const alpha=(cut,dt)=>{ const r=2*Math.PI*cut*dt; return r/(r+1); };
+  const f=(v,now)=>{
+    if(x===null){ x=v; t=now; return v; }
+    const dt=Math.max(1e-3,(now-t)/1000); t=now;
+    const dv=(v-x)/dt;
+    dx+=(dv-dx)*alpha(dCut,dt);
+    x+=(v-x)*alpha(minCut+beta*Math.abs(dx),dt);
+    return x;
+  };
+  f.reset=()=>{ x=null; dx=0; t=null; };
+  return f;
+}
+/* minCut is how calm a still hand becomes, beta how fast a sweep breaks out of
+   the filter. Tuned on the desk; retune at the venue against a real arm. */
+const fU=makeEuro(0.9,0.06,1.2), fV=makeEuro(0.9,0.06,1.2), fSize=makeEuro(0.5,0.02,1.0);
+
+/* ---------- THE STAMP ----------
+   The one signature beat. Light hard cuts in and decays over 900ms, paper gets
+   knocked one frame and snaps back. Both from a single pointerdown, which is the
+   deck's two fighting speeds fired from one event. */
+let stampT=0;
+function stamp(){
+  root.classList.add('flare'); document.body.classList.add('firing');
+  clearTimeout(stampT);
+  stampT=setTimeout(()=>{ root.classList.remove('flare');
+    document.body.classList.remove('firing'); },60);
+}
+
+/* ---------- canvas size ----------
+   The engine sizes its own renderer and writes inline styles onto the canvas, so
+   it pins itself to the default 300x150 in the top-left unless the backing store
+   AND the style are both set, every time. Learned the hard way on web-slinger.
+   dpr is capped at 2: this is a camera passthrough, not fine type. */
+function fitCanvas(){
+  const r = cam.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  cam.style.width = w+'px'; cam.style.height = h+'px';
+  cam.width = Math.max(320, Math.round(w*dpr));
+  cam.height = Math.max(180, Math.round(h*dpr));
+}
+fitCanvas();
+addEventListener('resize', fitCanvas);
+addEventListener('orientationchange', ()=>setTimeout(fitCanvas,150));
+
+/* ---------- gate ---------- */
+const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+
+/* The mandated two-up field is narrow and the email IS the deliverable at the
+   end of the night, so the full typed address is printed back underneath. */
+$('#email').addEventListener('input', ()=>{
+  const v=$('#email').value.trim();
+  $('#echo').textContent = emailOk(v) ? ('SENDING THE WALL TO '+v.toUpperCase()) : '';
+});
+
+$('#go').addEventListener('pointerdown', stamp);
+$('#go').addEventListener('click', async ()=>{
+  const handle=$('#handle').value.trim(), email=$('#email').value.trim();
+  if(handle.length<2) return $('#gateErr').textContent='Give yourself a tag name.';
+  if(!emailOk(email)) return $('#gateErr').textContent='That email does not look right.';
+  $('#gateErr').textContent='';
+  $('#go').disabled=true; $('#go').textContent='...';
+
+  // Claim the can HERE, so a server error surfaces while the guest is still
+  // looking at the form. The camera is NOT started on this tap.
+  try{
+    const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,email})});
+    if(!r.ok) throw 0;
+    me=await r.json();
+    $('#whoName').textContent=me.handle;
+    if(me.calib) applyCalib(me.calib);
+  }catch(e){
+    $('#go').disabled=false; $('#go').textContent='GRAB A CAN';
+    $('#gateErr').textContent='Could not reach the wall. Same wifi?';
+    return;
+  }
+
+  // THE PRIME CARD. A stranger in a dark room reads a bare OS camera dialog as a
+  // trap and hits deny. Telling them what is coming is the difference between a
+  // queue that moves and a queue that asks staff what to do.
+  $('#poster').style.display='none';
+  $('#go').style.display='none';
+  $('#prime').classList.add('on');
+  armCamera();
+});
+
+/* The engine loads async, so TURN ON THE CAMERA stays disabled until the image
+   tracking chunk is actually there. This is not politeness, it is the fix for a
+   real failure: XR8 can exist while XR8.XrController is still null, and
+   configure() then throws inside an awaited handler where nothing shows it.
+   Waiting HERE rather than inside the tap also protects the user gesture, which
+   is the only thing iOS will grant the camera on. */
+async function armCamera(){
+  if(SIM) return;
+  const btn=$('#allow');
+  if(engineState().ready) return;
+  btn.disabled=true; btn.textContent='LOADING THE TRACKER...';
+  const st=await whenEngineReady(15000);
+  if(st.ready){ btn.disabled=false; btn.textContent='TURN ON THE CAMERA'; }
+  else {
+    btn.disabled=true;
+    btn.textContent='TRACKER DID NOT LOAD';
+    noteError('engine: ' + (!st.engine ? 'xr.js never loaded'
+      : !st.controller ? 'slam chunk missing, XrController is null'
+      : 'GlTextureRenderer missing'));
+    $('#prime').querySelector('.fine').textContent =
+      'RELOAD THE PAGE. IF IT KEEPS FAILING, CHECK THE CONNECTION, THE TRACKER IS A 5MB DOWNLOAD.';
+  }
+}
+
+$('#allow').addEventListener('pointerdown', stamp);
+$('#allow').addEventListener('click', async ()=>{
+  // The camera starts INSIDE this tap, on a fresh gesture with no awaited fetch
+  // in front of it, which is the only way iOS reliably grants it. The motion
+  // sensor needs the SAME gesture (iOS 13+ gates it identically), and it is what
+  // keeps the aim alive when the edge panels leave the frame, so it is requested
+  // here rather than lazily later when there is no gesture left to spend.
+  $('#gate').style.display='none';
+  fitCanvas();
+  const gyro = enableOrientation();
+  await startCamera();
+  if(!(await gyro)) noteError('motion sensor denied, aim will drop when a panel leaves frame');
+});
+
+/* ---------- calibration ----------
+   Where each panel physically sits. Refetched only while the can has been idle,
+   which is exactly when staff are adjusting it at load-in, and never while
+   somebody is mid-stroke. */
+function applyCalib(c){
+  if(PANELWALL) c = PANELWALL_CALIB;
+  tracker.setCalib(c);
+  $('#cal').classList.toggle('on', !(c && c.measured));
+}
+async function refreshCalib(){
+  if(PANELWALL) return;                   // never let the server overwrite the desk test
+  const now=Date.now();
+  if(now-lastCalFetch < 10000) return;
+  lastCalFetch=now;
+  try{ const r=await fetch('/api/calib',{cache:'no-store'}); if(r.ok) applyCalib(await r.json()); }catch{}
+}
+
+/* ---------- camera ---------- */
+function fatal(msg){ $('#fatalMsg').textContent=msg; $('#fatal').classList.add('on'); }
+
+async function startCamera(){
+  if(SIM){ startSim(); loop(); return; }
+  // The camera needs a secure context. On plain http over the LAN the engine
+  // simply never gets a stream, and the failure is otherwise baffling.
+  if(!window.isSecureContext){
+    fatal('This needs a secure connection. Open the link from the QR card rather than typing an IP address.');
+    return;
+  }
+  const r = await tracker.start();
+  if(!r.ok){
+    noteError(r.error);
+    fatal('Could not start the camera. ' + r.error +
+          '. Reload the page, and allow the camera when it asks.');
+    return;
+  }
+  setTimeout(fitCanvas,300); setTimeout(fitCanvas,1200);
+  loop();
+}
+
+/* SIM: no engine, no camera. Poses are pushed straight into the tracker so the
+   real aim math, the real panel picking and the real smoothing all run. The
+   phone stands still and the guest walks: the camera stays at the origin and the
+   panels move, which is exactly what the engine reports.
+
+   Layout is the default calibration in metres: the screen is 1.44 x 0.81, panel1
+   hangs 0.99 left and 0.33 above its centre, panel3 mirrors it. So a walk to
+   wall point (x,y) must read u = 0.5 + x/1.44, v = 0.5 - y/0.81 off EITHER panel.
+
+   DRIVEN FROM tick(), NOT setInterval. A hidden pane throttles timers to about
+   1Hz, so an interval-driven sim goes stale between frames and reads as a
+   tracking failure that is really a test-harness failure. */
+const SIM_H = 0.594;                        // the printed panel height, metres
+let simT = 0, simTruth = null, simCtx = null;
+function startSim(){ simCtx = cam.getContext('2d'); simFrame(); }
+
+function simFrame(){
+  const g = simCtx; if(!g) return;
+  simT += 0.03;
+  // NOPANEL stands in for "the panels are out of frame": a bright screen in a
+  // dark room and nothing else, which is exactly what the fallback aimer needs.
+  g.fillStyle = NOPANEL ? '#050505' : '#0A0A0C';
+  g.fillRect(0,0,cam.width,cam.height);
+  if(NOPANEL){
+    // Sized to a REAL standing distance, not to look nice. A 1.44m screen seen
+    // from 6m through a phone's roughly 65 degree lens covers about half the
+    // frame width, and the fallback aimer deliberately rejects anything smaller
+    // than 8.3% of the frame as too small to be a wall. An undersized sim rect
+    // therefore reads as a broken fallback when the fallback is working exactly
+    // as designed. Ask what the real thing subtends before drawing a stand-in.
+    const w = cam.width*0.50 + Math.sin(simT*0.6)*cam.width*0.10, h = w*9/16;
+    g.fillStyle='#cfd6e0';
+    g.fillRect(cam.width/2 + Math.sin(simT)*cam.width*0.12 - w/2,
+               cam.height/2 + Math.cos(simT*0.8)*cam.height*0.10 - h/2, w, h);
+    return;                                  // no panel poses in this mode
+  }
+  g.fillStyle='rgba(255,30,142,.14)';
+  g.fillRect(cam.width*0.10, cam.height*0.26, cam.width*0.80, cam.height*0.40);
+  g.fillStyle='rgba(182,255,26,.55)'; g.font='600 20px monospace';
+  g.fillText('SIM', 18, cam.height-18);
+
+  const camX = Math.sin(simT)*0.5, camY = Math.cos(simT*0.8)*0.25;
+  const dist = 3.2 + Math.sin(simT*0.45)*1.7;
+  const ID = {x:0,y:0,z:0,w:1};
+  const pose = (wx,wy)=>({ position:{x: wx-camX, y: wy-camY, z: -dist},
+                           rotation: ID, scale: SIM_H });
+  tracker.feed({ name:'panel1', ...pose(-0.990, 0.330) },
+               { position:{x:0,y:0,z:0}, rotation:ID });
+  tracker.feed({ name:'panel3', ...pose( 0.990, 0.330) });
+  simTruth = { u: 0.5 + camX/1.44, v: 0.5 - camY/0.81, distM: dist };
+}
+
+/* ---------- controls ---------- */
+document.querySelectorAll('.noz').forEach(b=>b.addEventListener('click',()=>{
+  nozzle=b.dataset.n;
+  document.querySelectorAll('.noz').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+const wheel=$('#wheel'), wctx=wheel.getContext('2d',{willReadFrequently:true});
+(function(){ for(let y=0;y<64;y++) for(let x=0;x<64;x++){
+  const dx=x-32,dy=y-32,d=Math.hypot(dx,dy);
+  if(d<=32){ wctx.fillStyle=`hsl(${(Math.atan2(dy,dx)+Math.PI)/(Math.PI*2)*360}, ${d/32*100}%, 50%)`;
+    wctx.fillRect(x,y,1,1);} } })();
+function pick(e){
+  const r=wheel.getBoundingClientRect();
+  const cx=(e.clientX??e.touches[0].clientX)-r.left, cy=(e.clientY??e.touches[0].clientY)-r.top;
+  $('#dot').style.left=cx+'px'; $('#dot').style.top=cy+'px';
+  const p=wctx.getImageData(Math.max(0,Math.min(63,cx*64/r.width)),
+    Math.max(0,Math.min(63,cy*64/r.height)),1,1).data;
+  if(p[3]>0){ color='#'+((1<<24)+(p[0]<<16)+(p[1]<<8)+p[2]).toString(16).slice(1);
+    $('#ring').style.setProperty('--ink', color);
+    $('#colorChip').style.background = color; }
+}
+let wd=false; const ww=$('#wheelWrap');
+ww.addEventListener('pointerdown',e=>{ww.setPointerCapture(e.pointerId);wd=true;pick(e);});
+ww.addEventListener('pointermove',e=>{if(wd)pick(e);});
+ww.addEventListener('pointerup',()=>wd=false);
+
+/* ---------- the trigger ---------- */
+const btn=$('#spray');
+const down=e=>{ e.preventDefault(); if(!lock || btn.disabled) return;
+  spraying=true; strokeStart=true; btn.classList.add('on'); stamp(); };
+const up=e=>{ e.preventDefault(); spraying=false; btn.classList.remove('on'); flush(); };
+btn.addEventListener('pointerdown',down);
+btn.addEventListener('pointerup',up);
+btn.addEventListener('pointercancel',up);
+btn.addEventListener('pointerleave',up);
+
+/* THE KIT. Everything that is not the trigger hides behind the menu button, so
+   the default screen is: camera, crosshair, one circle. The colour button is a
+   shortcut into the same sheet, and shows the colour you are carrying. */
+const sheetToggle = () => $('#bottom').classList.toggle('open');
+$('#menuBtn').addEventListener('click', sheetToggle);
+$('#colorBtn').addEventListener('click', () => $('#bottom').classList.add('open'));
+
+/* SEE THE WALL. Renders the shared wall from the same event log the venue
+   screen uses, with everyone else's paint at 35 percent and yours at full, so
+   "which bit is mine" answers itself. Rendered on open, tap to refresh: a live
+   stream on the phone would fight the camera for the frame budget. */
+let wallSurface = 'brick';
+async function renderWallView(){
+  const cv = $('#wvCanvas'), g = cv.getContext('2d');
+  const Wv = cv.width, Hv = cv.height;
+  let st;
+  try { st = await (await fetch('/api/state')).json(); }
+  catch { $('#hint').textContent = 'COULD NOT REACH THE WALL'; return; }
+  wallSurface = st.surface || wallSurface;
+  drawSurface(g, Wv, Hv, wallSurface);
+  const others = document.createElement('canvas'), mine = document.createElement('canvas');
+  others.width = mine.width = Wv; others.height = mine.height = Hv;
+  const og = others.getContext('2d'), mg = mine.getContext('2d');
+  const lastP = new Map();
+  for (const e of (st.events || [])){
+    const ctx = (me && e.u === me.id) ? mg : og;
+    let last = e.b ? null : lastP.get(e.u) || null;
+    const s = e.s * (Wv / 1920);
+    for (const [nx, ny] of e.p)
+      last = spray(ctx, { x: nx * Wv, y: ny * Hv, color: e.c, nozzle: e.n,
+                          tool: e.t, size: s, spread: e.sp, depth: 1 }, last);
+    lastP.set(e.u, last);
+  }
+  g.globalAlpha = .35; g.drawImage(others, 0, 0);
+  g.globalAlpha = 1;   g.drawImage(mine, 0, 0);
+  const rl = document.createElement('canvas'); rl.width = Wv; rl.height = Hv;
+  drawRelief(rl.getContext('2d'), Wv, Hv, wallSurface);
+  g.globalCompositeOperation = 'multiply'; g.drawImage(rl, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+}
+$('#seeWall').addEventListener('click', () => {
+  $('#wallview').classList.add('on'); renderWallView();
+});
+$('#wvCanvas').addEventListener('click', renderWallView);
+$('#wvClose').addEventListener('click', () => $('#wallview').classList.remove('on'));
+
+/* UNDO, your own paint only. The server pops your last stroke off the event log
+   and every screen rebuilds without it. It cannot touch anyone else's paint. */
+$('#undo').addEventListener('click', async () => {
+  if(!me) return;
+  try{
+    const r = await (await fetch('/api/undo',{method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({u:me.id})})).json();
+    $('#hint').textContent = r.removed ? 'LAST STROKE ERASED' : 'NOTHING OF YOURS TO ERASE';
+  }catch{ $('#hint').textContent = 'COULD NOT REACH THE WALL'; }
+});
+
+/* ---------- loop ----------
+   rAF freezing when the phone screen sleeps is CORRECT here, the can should stop.
+   But it also means nothing runs in a hidden browser pane, so the body is split
+   out and exposed as __CAN.step(). Third time this project has needed that. */
+function loop(){ tick(); requestAnimationFrame(loop); }
+
+let lastFallback=0;
+/* No panel in frame. Fall back to the bright screen, throttled to 8Hz because it
+   is a canvas readback and it only has to keep the can alive, not feel good.
+   `force` skips the throttle so a headless check can drive it without waiting on
+   real time, which a hidden pane throttles to about 1Hz anyway. */
+function fallbackTick(force){
+  const now = Date.now();
+  if (!force && now - lastFallback <= 125) return;
+  lastFallback = now;
+  const f = aimer.read(cam, 1);              // raw; the One Euro filter smooths
+  if (f.ok){
+    const n = performance.now();
+    setAim(fU(f.u,n), fV(f.v,n), fSize(sizeFromFill(f.fill),n), 'screen', null, 0);
+    const b=$('#wallbox'), r=cam.getBoundingClientRect();
+    b.style.opacity=.9;
+    b.style.left=(f.box.x*r.width)+'px'; b.style.top=(f.box.y*r.height)+'px';
+    b.style.width=(f.box.w*r.width)+'px'; b.style.height=(f.box.h*r.height)+'px';
+  } else dropLock();
+}
+
+function tick(force){
+  if (SIM) simFrame();
+  const r = tracker.read(1);                 // raw; the One Euro filter smooths
+  if (r.ok){
+    const n = performance.now();
+    // 'held' means the gyro is carrying the aim between sightings of a panel.
+    // Still exact geometry, just ageing, so it is its own state rather than
+    // being dressed up as a live lock.
+    setAim(fU(r.u,n), fV(r.v,n), fSize(r.size,n),
+           r.held ? 'held' : 'panel', r.panel, r.distM);
+  }
+  else fallbackTick(force);
+
+  if (mode==='panel') $('#wallbox').style.opacity=0;
+  if (!lock) { if(!unlockedSince) unlockedSince=Date.now();
+               if(Date.now()-unlockedSince>3000) refreshCalib(); }
+  else unlockedSince=0;
+
+  /* THE READOUT. Every line answers a different "why is nothing happening", in
+     the order you would ask them: did the code load, did the camera open, are
+     frames arriving, are the targets registered, has ANY panel ever been seen.
+     `frames 0` means the engine is not running. Frames climbing with `found 0`
+     means the camera is fine and the panel is the problem. */
+  if ($('#dbg').classList.contains('on')){
+    const s=tracker.stats();
+    $('#dbg').textContent =
+      `engine  ${s.engine?'yes':'NO'}   track ${s.controller?'yes':'NO'}\n`+
+      `session ${s.started?'running':'NOT STARTED'}\n`+
+      `camera  ${s.camera}   gyro ${s.gyro?'yes':'NO'}\n`+
+      `frames  ${s.frames}  (${s.fps.toFixed(1)} fps)\n`+
+      `held    ${s.heldMs ? s.heldMs+'ms' : 'live'}\n`+
+      `targets ${s.registered.join(',')||'-'}\n`+
+      `event   ${s.lastEvent}   found ${s.foundEver}\n`+
+      `seen    ${s.seen.join(',')||'-'}\n`+
+      `mode    ${mode}\n`+
+      `aim     ${lastAim? lastAim.u.toFixed(3)+' '+lastAim.v.toFixed(3):'-'}\n`+
+      `dist    ${lastAim? lastAim.distM.toFixed(2)+'m':'-'}   size ${size.toFixed(2)}\n`+
+      (s.bad.length?`BAD     ${s.bad.join(' ')}\n`:'')+
+      ((lastError||s.error)?`ERROR   ${lastError||s.error}`:'');
+  }
+}
+
+/* ---------- lock state ----------
+   One function owns the chip, the trigger rim, the trigger label and the hint,
+   so the bottom third always explains itself. Only a STATE CHANGE re-renders and
+   fires the stamp: running it every frame would strobe the whole screen. */
+let lockState='none';
+const segEls=document.querySelectorAll('#segs i');
+function setLockState(state, panel, metres){
+  if(state===lockState){
+    if(state==='on') $('#lock').querySelector('small').textContent =
+      (panel||'').toUpperCase()+' / '+metres.toFixed(1)+' M';
+    return;
+  }
+  lockState=state;
+  const el=$('#lock');
+  el.className = state==='none' ? '' : state;
+  if(state==='held'){
+    el.innerHTML='ON THE WALL<small>HOLDING, FIND A PANEL AGAIN</small>';
+    root.style.setProperty('--lock','#B6FF1A');
+    btn.disabled=false; btn.textContent='HOLD TO SPRAY';
+    $('#hint').textContent='STEP CLOSER FOR A FATTER LINE';
+  } else if(state==='on'){
+    el.innerHTML='ON THE WALL<small>'+(panel||'').toUpperCase()+' / '+metres.toFixed(1)+' M</small>';
+    root.style.setProperty('--lock','#B6FF1A');
+    btn.disabled=false; btn.textContent='HOLD TO SPRAY';
+    // the hint is one line, nowrap and 366px wide on a 390 phone, so it has to
+    // stay under about 30 characters or it ellipsises mid word
+    $('#hint').textContent='STEP CLOSER FOR A FATTER LINE';
+    stamp();
+  }else if(state==='weak'){
+    el.innerHTML='SCREEN ONLY<small>NO PANEL IN FRAME</small>';
+    root.style.setProperty('--lock','#FF6A00');
+    btn.disabled=false; btn.textContent='HOLD TO SPRAY';
+    $('#hint').textContent='ROUGH AIM, FIND A PANEL';
+  }else{
+    el.innerHTML='FIND A PANEL<small>POINT AT A PRINTED PANEL</small>';
+    root.style.setProperty('--lock','#E01B24');
+    btn.disabled=true; btn.textContent='FIND A PANEL';
+    $('#hint').textContent='POINT AT A PANEL BESIDE THE WALL';
+  }
+}
+
+/* Eight hard segments read at a glance over moving video where a filled bar does
+   not. Repainted at 8fps, the paper speed, not every frame. */
+let meterT=0;
+function setThickness(sz, metres){
+  const n=Date.now(); if(n-meterT<125) return; meterT=n;
+  const t=(sz-RANGE_M.minSize)/(RANGE_M.maxSize-RANGE_M.minSize);
+  const litN=Math.max(1,Math.round(Math.max(0,Math.min(1,t))*8));
+  for(let i=0;i<segEls.length;i++) segEls[i].classList.toggle('on', i<litN);
+  $('#distNum').textContent=(metres||0).toFixed(1);
+}
+
+function setAim(u,v,sz,how,panel,distM){
+  lastAim={u,v,distM:distM||0}; size=sz; mode=how;
+  lock=true;
+  setLockState(how==='panel'?'on':how==='held'?'held':'weak', panel, distM||0);
+  setThickness(sz, distM||0);
+  const px=Math.round(30+sz*20);
+  $('#ring').style.width=px+'px'; $('#ring').style.height=px+'px';
+
+  /* OFF THE WALL. A locked panel only tells you WHERE the phone points, not that
+     it points at the painting surface, so aiming at the ceiling, at the panel
+     itself, or past the edge of the screen produces a valid aim that lands
+     nowhere. That used to be silent: green badge, held trigger, no paint, no
+     explanation. Now it says so and the crosshair goes dead. */
+  const onWall = u>=-0.05 && u<=1.05 && v>=-0.05 && v<=1.05;
+  if(onWall !== lastOnWall){
+    lastOnWall = onWall;
+    $('#reg').classList.toggle('off', !onWall);
+    if(!onWall) $('#hint').textContent='AIMING OFF THE WALL';
+    else if(lockState==='on') $('#hint').textContent='STEP CLOSER FOR A FATTER LINE';
+    else $('#hint').textContent='ROUGH AIM, FIND A PANEL';
+  }
+  if(spraying && onWall){
+    batch.push([Math.max(0,Math.min(1,u)), Math.max(0,Math.min(1,v))]);
+  }
+}
+let lastOnWall=true;
+
+function dropLock(){
+  if(!lock) return;
+  lock=false; mode='none'; lastAim=null;
+  spraying=false; btn.classList.remove('on');
+  setLockState('none');
+  $('#wallbox').style.opacity=0;
+  // a re-acquire must SNAP to the new aim, not glide across the wall from
+  // wherever the filter last was
+  fU.reset(); fV.reset(); fSize.reset();
+}
+
+/* ---------- send ---------- */
+setInterval(flush, 60);
+async function flush(){
+  if(sending || !me || !batch.length) return;
+  const p=batch; batch=[]; const b=strokeStart; strokeStart=false;
+  sending=true;
+  try{
+    await fetch('/api/spray',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({u:me.id,c:color,n:nozzle,t:'brush',s:size,sp:1,b,p})});
+  }catch{}
+  sending=false;
+}
+
+/* A hidden tab parks steps() animations on an arbitrary frame and can leave
+   .flare stranded mid decay. Null it, reflow, restore. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden) return;
+  root.classList.remove('flare'); document.body.classList.remove('firing');
+  document.querySelectorAll('.tone.live,.wash').forEach(el=>{
+    const a=el.style.animation; el.style.animation='none'; void el.offsetWidth;
+    el.style.animation=a||'';
+  });
+});
+
+// probe hooks for headless checking
+window.__CAN={ state:()=>({lock,mode,size,aim:lastAim,nozzle,color,spraying,queued:batch.length,
+                           truth:simTruth, calib:tracker.calib(), lockState}),
+  step(n=1){ for(let i=0;i<n;i++) tick(true); return {lock,mode,size,aim:lastAim}; },
+  trigger(on){ spraying=on; strokeStart=on; },
+  tracker, aimer, flush };
+</script>
+</body>
+</html>

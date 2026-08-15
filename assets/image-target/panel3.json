@@ -1,0 +1,23 @@
+{
+  "imagePath": "assets/image-target/panel3_luminance.png",
+  "metadata": null,
+  "name": "panel3",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 0,
+    "width": 1200,
+    "height": 1600,
+    "isRotated": false,
+    "originalWidth": 1200,
+    "originalHeight": 1600
+  },
+  "resources": {
+    "originalImage": "panel3_original.png",
+    "croppedImage": "panel3_cropped.png",
+    "thumbnailImage": "panel3_thumbnail.png",
+    "luminanceImage": "panel3_luminance.png"
+  },
+  "created": 1786521423110,
+  "updated": 1786521423110
+}

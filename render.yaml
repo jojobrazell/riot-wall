@@ -1,0 +1,24 @@
+# One-click Render deploy. Also readable as a spec for Railway or Fly.
+#
+# The disk block is the important part and the easy thing to skip: without it
+# the container filesystem is wiped on every restart and deploy, which would
+# take the whole wall AND the lead list with it mid-night. A restart is not
+# hypothetical; hosts move containers whenever they feel like it.
+services:
+  - type: web
+    name: riot-wall
+    runtime: node
+    plan: starter          # free tier SLEEPS after inactivity and cold-starts
+                           # for ~30s. Fine for a demo link, not for a live room.
+    buildCommand: ""       # no dependencies, nothing to build
+    startCommand: npm start
+    healthCheckPath: /api/layout
+    envVars:
+      - key: RIOT_ADMIN_KEY
+        sync: false        # set it in the dashboard. Never commit it.
+      - key: NODE_VERSION
+        value: "20"
+    disk:
+      name: riot-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1

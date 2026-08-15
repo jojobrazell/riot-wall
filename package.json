@@ -1,0 +1,14 @@
+{
+  "name": "riot-wall",
+  "version": "1.0.0",
+  "private": true,
+  "description": "R!OT WALL, Slowsie x MIXR STUDIOS. Every phone is a spray can painting one shared wall.",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node check-aim.mjs"
+  },
+  "dependencies": {}
+}

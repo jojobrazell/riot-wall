@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>R!OT WALL</title>
+<meta name="description" content="The live wall. Everyone's phone is a spray can.">
+<style>
+  :root{ --magenta:#FF1E8E; --acid:#B6FF1A; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#09090b;overflow:hidden;cursor:none;color:#fff;
+    font-family:"Archivo Narrow","Arial Narrow",system-ui,sans-serif}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #relief{mix-blend-mode:multiply;pointer-events:none}
+  #ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;
+    justify-content:space-between}
+  /* horizontal padding clears the panel gutters (11.5% each side), so the QR
+     block and the brand plates never sit on top of a tracking target */
+  header,footer{display:flex;align-items:flex-start;justify-content:space-between;
+    padding:3vh calc(11.5% + 1vw)}
+  footer{align-items:flex-end}
+  .kicker{font:600 1.05vh/1 sans-serif;letter-spacing:.34em;text-transform:uppercase;
+    color:rgba(255,255,255,.42)}
+  .wordmark{font:800 7vh/0.9 Georgia,serif;margin-top:.7vh;
+    text-shadow:0 0 5vh rgba(255,30,142,.36)}
+  .wordmark em{font-style:normal;color:var(--magenta)}
+  .n{font:800 7vh/0.9 Georgia,serif;text-align:right}
+  .join{display:flex;align-items:center;gap:1.5vw}
+  .qr{width:11vh;height:11vh;background:#F0EADC;padding:.6vh;border-radius:6px;
+    display:grid;place-items:center}
+  .qr img{width:100%;height:100%;image-rendering:pixelated;display:block}
+  .big{font:800 2.9vh/1.05 inherit}
+  .url{font:700 1.85vh/1.4 monospace;color:var(--acid)}
+  .brands{text-align:right;font:600 1.2vh/1.9 sans-serif;letter-spacing:.24em;
+    text-transform:uppercase;color:rgba(255,255,255,.40)}
+  .brands b{color:rgba(255,255,255,.80);font-weight:700}
+  #offline{position:fixed;left:3.2vw;top:50%;transform:translateY(-50%);padding:1.1vh 1.5vw;
+    background:rgba(224,27,36,.92);border-radius:8px;font:700 1.5vh/1 inherit;
+    letter-spacing:.16em;text-transform:uppercase;display:none}
+  #offline.on{display:block}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="paint"></canvas>
+<!-- The wall's crevices, multiplied over BOTH the wall and the paint, because a
+     mortar joint is in shadow whether or not somebody sprayed across it. This is
+     what stops the paint reading as a sticker laid on a photo of a wall. -->
+<canvas id="relief"></canvas>
+<canvas id="fx"></canvas>
+<div id="ui">
+  <header>
+    <div><div class="kicker">Slowsie x MIXR</div>
+      <div class="wordmark">R<em>!</em>OT WALL</div></div>
+    <div><div class="kicker">Cans out</div><div class="n" id="count">0</div></div>
+  </header>
+  <footer>
+    <div class="join">
+      <div class="qr" id="qr"></div>
+      <div><div class="big">YOUR PHONE IS A SPRAY CAN</div>
+        <div class="url" id="url">connecting...</div></div>
+    </div>
+    <div class="brands"><div><b>ENDLESS RIVER</b></div>
+      <div>Experience by <b>MIXR STUDIOS</b></div></div>
+  </footer>
+</div>
+<div id="offline">Reconnecting</div>
+
+<script src="./vendor/qrcode/qrcode.js"></script>
+<script type="module">
+import { spray } from './spray.js?v=3';
+import { drawSurface, drawRelief } from './surface.js?v=1';
+
+const bg=document.getElementById('bg'), bgx=bg.getContext('2d');
+const paint=document.getElementById('paint'), px=paint.getContext('2d',{willReadFrequently:true});
+const relief=document.getElementById('relief'), rx=relief.getContext('2d');
+const fx=document.getElementById('fx'), fxx=fx.getContext('2d');
+
+/* ---------- SCREEN PANELS ----------
+   The tracking panels are drawn ON this screen, in side gutters the paint never
+   reaches, so phones lock the screen itself and nothing has to be printed. The
+   geometry comes from /api/layout, the SAME object the server derives the
+   phones' calibration from, so where the wall draws a panel and where a phone
+   believes it is can never disagree. Paint u/v 0..1 maps onto the strip BETWEEN
+   the gutters. */
+let LAYOUT = null;                       // {screenPanels, layout:{gutter,pad,panels}, screenHmm}
+const panelArt = new Map();              // name -> HTMLImageElement
+function paintX0(){ return LAYOUT && LAYOUT.screenPanels ? LAYOUT.layout.gutter * W : 0; }
+function paintX1(){ return LAYOUT && LAYOUT.screenPanels ? (1 - LAYOUT.layout.gutter) * W : W; }
+
+function drawGutters(){
+  if (!(LAYOUT && LAYOUT.screenPanels)) return;
+  const { gutter, pad, panels } = LAYOUT.layout;
+  const gw = gutter * W, pw = (gutter - 2 * pad) * W, ph = pw * 4 / 3;
+  // BRICK ALL ACROSS (JoJo ruling 2026-08-13: no white columns). The panels sit
+  // straight on the wall as paste-up posters, which is more Girl Riot anyway.
+  // The fallback ruler survives: the aimer finds the leftmost and rightmost
+  // tall bright BANDS, and the stacked paper posters themselves are those bands
+  // on a near-black wall. Paint stays between the gutters, so nothing brighter
+  // can ever appear further out than the posters.
+  for (const p of panels){
+    const cx = p.side === 'left' ? gw / 2 : W - gw / 2;
+    const cy = p.slot === 0 ? H * 0.25 : H * 0.75;
+    // paper backing proud of the art, so the target has a bright border the
+    // tracker can grab even where the art runs dark
+    bgx.fillStyle = '#0A0A0C';
+    bgx.fillRect(cx - pw / 2 - 6, cy - ph / 2 - 6, pw + 12, ph + 12);
+    bgx.fillStyle = '#F6F3EA';
+    bgx.fillRect(cx - pw / 2 - 3, cy - ph / 2 - 3, pw + 6, ph + 6);
+    const img = panelArt.get(p.name);
+    if (img && img.complete && img.naturalWidth)
+      bgx.drawImage(img, cx - pw / 2, cy - ph / 2, pw, ph);
+    else { bgx.fillStyle = '#CFCBC0'; bgx.fillRect(cx - pw / 2, cy - ph / 2, pw, ph); }
+  }
+}
+
+/* The wall is a height field lit by a light, so building it is real work (a
+   normal pass plus a blur over every pixel). It is baked ONCE per size and
+   surface, never per frame. Both layers come off the same cached field so the
+   lit wall and its shadows can never drift apart. Gutters go on after, and the
+   relief is cleared under them so no fake mortar shadow falls on the paper. */
+function paintWall(){
+  drawSurface(bgx,W,H,surface); drawRelief(rx,W,H,surface);
+  drawGutters();
+  // clear the mortar shadow under each POSTER only: paper pasted over brick
+  // sits above the crevices, but the brick between the posters keeps its relief
+  if (LAYOUT && LAYOUT.screenPanels){
+    const { gutter, pad, panels } = LAYOUT.layout;
+    const gw = gutter * W, pw = (gutter - 2 * pad) * W, ph = pw * 4 / 3;
+    for (const p of panels){
+      const cx = p.side === 'left' ? gw / 2 : W - gw / 2;
+      const cy = p.slot === 0 ? H * 0.25 : H * 0.75;
+      rx.clearRect(cx - pw / 2 - 6, cy - ph / 2 - 6, pw + 12, ph + 12);
+    }
+  }
+}
+let W=0,H=0, surface='brick';
+let events=[];                          // the wall IS this list
+const painters=new Map();               // id -> {handle}
+const lastPt=new Map();                 // id -> {x,y}  per painter, so strokes never join up
+const active=new Map();                 // id -> {x,y,t,color} for the live cursors
+
+/* Nozzle radii were authored against a ~1920 wide canvas, so scale the size
+   multiplier by how wide this wall actually is. Without this a phone's "fat cap"
+   is a dot on a big screen and a boulder on a small one. */
+const wallScale = () => W/1920;
+
+function apply(g, e){
+  const s = e.s * wallScale();
+  let last = e.b ? null : lastPt.get(e.u) || null;
+  // u/v 0..1 is the PAINT AREA, the strip between the gutters, so panel art can
+  // never be painted over and a phone's idea of the wall matches this mapping.
+  const x0 = paintX0(), x1 = paintX1();
+  for(const [nx,ny] of e.p){
+    last = spray(g, { x:x0+nx*(x1-x0), y:ny*H, color:e.c, nozzle:e.n, tool:e.t,
+                      size:s, spread:e.sp, depth:1 }, last);
+  }
+  lastPt.set(e.u, last);
+  if(last) active.set(e.u, { x:last.x, y:last.y, t:performance.now(), color:e.c });
+}
+
+function rebuild(){
+  px.clearRect(0,0,W,H);
+  lastPt.clear();
+  for(const e of events) apply(px, e);
+}
+
+function fit(){
+  const dpr=Math.min(2, devicePixelRatio||1);
+  W=Math.round(innerWidth*dpr); H=Math.round(innerHeight*dpr);
+  for(const c of [bg,paint,relief,fx]){ c.width=W; c.height=H; }
+  paintWall();
+  rebuild();
+}
+addEventListener('resize', fit);
+
+/* ---------- live painter cursors ---------- */
+let lastTick=0;
+function tick(now){
+  fxx.clearRect(0,0,W,H);
+  for(const [id,a] of active){
+    const age=now-a.t;
+    if(age>2600){ active.delete(id); continue; }
+    const fade=Math.max(0, 1-age/2600);
+    const r=Math.max(10, H*0.016);
+    fxx.save();
+    fxx.globalAlpha=fade;
+    fxx.strokeStyle=a.color; fxx.lineWidth=Math.max(2,H*0.0022);
+    fxx.shadowColor=a.color; fxx.shadowBlur=r*1.2;
+    fxx.beginPath(); fxx.arc(a.x,a.y,r,0,6.283); fxx.stroke();
+    fxx.shadowBlur=0;
+    const p=painters.get(id);
+    if(p){
+      const fs=Math.max(11,H*0.019);
+      fxx.font=`700 ${fs}px "Archivo Narrow","Arial Narrow",sans-serif`;
+      fxx.textAlign='center'; fxx.textBaseline='top';
+      fxx.fillStyle='rgba(0,0,0,.65)';
+      const tw=fxx.measureText(p.handle).width;
+      fxx.fillRect(a.x-tw/2-6, a.y+r+4, tw+12, fs+6);
+      fxx.fillStyle='#fff'; fxx.fillText(p.handle, a.x, a.y+r+7);
+    }
+    fxx.restore();
+  }
+  lastTick=now;
+}
+function raf(now){ tick(now); requestAnimationFrame(raf); }
+// rAF is suspended whenever this tab is not composited, and one alt-tab on the
+// venue machine would freeze the wall while guests keep spraying at it.
+setInterval(()=>{ const n=performance.now(); if(n-lastTick>400) tick(n); }, 250);
+
+/* ---------- feed ---------- */
+async function load(){
+  const r=await fetch('/api/state'); const j=await r.json();
+  surface=j.surface||'brick'; events=j.events||[];
+  for(const p of j.painters||[]) painters.set(p.id,{handle:p.handle});
+  document.getElementById('count').textContent=painters.size;
+  paintWall(); rebuild();
+}
+function connect(){
+  const es=new EventSource('/api/stream');
+  const off=document.getElementById('offline');
+  es.addEventListener('open',()=>off.classList.remove('on'));
+  es.addEventListener('spray',e=>{ const b=JSON.parse(e.data); events.push(b); apply(px,b); });
+  es.addEventListener('painter',e=>{ const p=JSON.parse(e.data);
+    painters.set(p.id,{handle:p.handle});
+    document.getElementById('count').textContent=painters.size; });
+  es.addEventListener('rebuild',()=>load());
+  es.addEventListener('surface',e=>{ surface=JSON.parse(e.data).surface;
+    paintWall(); });
+  // gutters on/off or a new screen height: repaint AND rebuild, because the
+  // paint-area mapping just moved under every existing stroke
+  es.addEventListener('layout',e=>{ try{ LAYOUT=JSON.parse(e.data); }catch{}
+    paintWall(); rebuild(); });
+  es.onerror=()=>off.classList.add('on');
+}
+
+/* the panel artwork, same files the compiled targets were built from */
+async function loadLayout(){
+  try{ LAYOUT=await (await fetch('/api/layout')).json(); }catch{ return; }
+  let pending=0;
+  for(const p of (LAYOUT.layout?.panels||[])){
+    if(panelArt.has(p.name)) continue;
+    /* SHIPPED art lives in assets/panels/. captures/ is where panels.html writes
+       fresh ones during development and is not deployed, so it is the fallback
+       rather than the source: regenerate locally, then copy into assets/panels
+       before shipping. */
+    const n=p.name.replace('panel','');
+    const img=new Image(); pending++;
+    img.onerror=()=>{ if(img.src.indexOf('assets/panels/')>=0){ img.src='captures/panel-'+n+'.png'; return; }
+      if(--pending===0) paintWall(); };
+    img.onload=()=>{ if(--pending===0) paintWall(); };
+    img.src='assets/panels/panel-'+n+'.png';
+    panelArt.set(p.name,img);
+  }
+  paintWall(); rebuild();
+}
+
+async function showJoin(){
+  let url=location.origin;
+  try{ const j=await (await fetch('/api/wifi')).json();
+    if(j.urls&&j.urls.length) url=j.urls[0]; }catch{}
+  document.getElementById('url').textContent=url.replace(/^https?:\/\//,'');
+  try{ if(window.qrcode){ const q=window.qrcode(0,'M'); q.addData(url); q.make();
+    const el=document.getElementById('qr'); el.innerHTML=q.createImgTag(8,2);
+    const img=el.querySelector('img');
+    if(img){ img.removeAttribute('width'); img.removeAttribute('height');
+      img.alt='Scan to grab a can'; } } }catch{}
+}
+
+fit(); loadLayout(); load(); connect(); showJoin(); requestAnimationFrame(raf);
+
+window.__WALL={
+  pump(ms=4000,step=33){ let t=performance.now();
+    for(let i=0;i<ms/step;i++){ t+=step; tick(t); } return 'pumped'; },
+  // synthetic painters, for checking the wall with no phones in the room
+  demo(n=4){
+    for(let k=0;k<n;k++){
+      const id=90000+k, hue=(k*67)%360;
+      painters.set(id,{handle:'DEMO'+(k+1)});
+      const col='#'+[0,1,2].map(i=>{ const c=Math.round(127+120*Math.sin(hue/57+i*2));
+        return c.toString(16).padStart(2,'0'); }).join('');
+      const noz=['solid','fat','splatter','wet','streak'][k%5];
+      let x=0.12+Math.random()*0.76, y=0.25+Math.random()*0.5;
+      for(let s=0;s<7;s++){
+        const pts=[];
+        for(let i=0;i<16;i++){ x+=(Math.random()-0.5)*0.06; y+=(Math.random()-0.5)*0.05;
+          pts.push([Math.max(0.02,Math.min(0.98,x)),Math.max(0.05,Math.min(0.95,y))]); }
+        const b={u:id,c:col,n:noz,t:'brush',s:1.2,sp:1,b:s===0,p:pts};
+        events.push(b); apply(px,b);
+      }
+    }
+    document.getElementById('count').textContent=painters.size;
+    return n+' demo painters';
+  }
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>R!OT WALL, tracking panels</title>
+<meta name="description" content="Generate the printed Girl Riot panels that the phones track.">
+<style>
+  body{margin:0;background:#0A0A0C;color:#fff;font-family:"Archivo Narrow","Arial Narrow",system-ui,sans-serif;padding:18px}
+  h1{font:800 26px/1 Georgia,serif;margin:0 0 4px}
+  h1 em{font-style:normal;color:#FF1E8E}
+  p{font:500 13px/1.6 sans-serif;color:rgba(255,255,255,.62);max-width:78ch}
+  button{min-height:46px;padding:0 16px;border:1px solid rgba(255,255,255,.2);border-radius:9px;
+    background:rgba(255,255,255,.06);color:#fff;font:700 12px/46px inherit;letter-spacing:.14em;
+    text-transform:uppercase;cursor:pointer;margin:10px 8px 14px 0}
+  #out{display:flex;gap:12px;flex-wrap:wrap}
+  #out canvas{width:210px;height:280px;border:1px solid rgba(255,255,255,.2);border-radius:4px}
+  #log{font:600 12px/1.7 monospace;color:#B6FF1A;white-space:pre-wrap;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>R<em>!</em>OT WALL, tracking panels</h1>
+<p>
+  These are the printed panels the phones lock onto. They are Girl Riot artwork, and they are
+  also the tracking targets, so they are built for BOTH jobs: dense edge detail, hard black on
+  paper white, and deliberately no repeating pattern, because repetition is what makes feature
+  matching pick the wrong spot. Each panel is unique and carries its own number so it can be
+  hung in the right place.
+</p>
+<p>
+  Print at A2 or larger on MATTE stock. Gloss blows out under stage lights and kills tracking.
+</p>
+<button id="gen">Generate 4 panels</button>
+<button id="save">Save PNGs to captures/</button>
+<div id="out"></div>
+<div id="log"></div>
+
+<script type="module">
+const OUT=document.getElementById('out'), LOG=document.getElementById('log');
+const W=1200, H=1600;                       // 3:4 portrait, matches the target crop
+const say=m=>LOG.textContent+=m+'\n';
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const WORDS=[
+  ['R!OT','K!DS','FRI 22'],['V3LVET','TEETH','SAT 09'],['DEAD','SUBURB','THU 14'],
+  ['SUGAR','KNIFE','ONE NIGHT'],['PAPER','TIGERS','SOLD OUT'],['STATIC','BLOOM','MATINEE'],
+  ['VOID','ARCADE','MIDNIGHT'],['CRUSH','SEASON','SAT 16'],['WIRE','FLOWERS','FREE B4 10'],
+  ['NEON','CURFEW','LIVE'],['GRRRL','MACHINE','SUN 27'],['HALF LIGHT','CLUB','EVERY FRI'],
+];
+
+function halftone(g,x,y,w,h,gap,dot,alpha,col){
+  g.save(); g.globalAlpha=alpha; g.fillStyle=col;
+  for(let yy=y;yy<y+h;yy+=gap) for(let xx=x;xx<x+w;xx+=gap){
+    g.beginPath(); g.arc(xx,yy,dot,0,6.283); g.fill(); }
+  g.restore();
+}
+function torn(g,x,y,w,h,r){
+  const step=22,j=11; g.beginPath(); let first=true;
+  const edge=(x0,y0,x1,y1)=>{ const n=Math.max(2,Math.round(Math.hypot(x1-x0,y1-y0)/step));
+    for(let i=0;i<=n;i++){ const t=i/n;
+      const px=x0+(x1-x0)*t+(r()-0.5)*j, py=y0+(y1-y0)*t+(r()-0.5)*j;
+      if(first){g.moveTo(px,py);first=false}else g.lineTo(px,py); } };
+  edge(x,y,x+w,y); edge(x+w,y,x+w,y+h); edge(x+w,y+h,x,y+h); edge(x,y+h,x,y);
+  g.closePath();
+}
+function star(g,cx,cy,rad,col){
+  g.save(); g.fillStyle=col; g.beginPath();
+  for(let i=0;i<10;i++){ const a=-Math.PI/2+i*Math.PI/5, rr=i%2?rad*0.44:rad;
+    const px=cx+Math.cos(a)*rr, py=cy+Math.sin(a)*rr; i?g.lineTo(px,py):g.moveTo(px,py); }
+  g.closePath(); g.fill(); g.restore();
+}
+
+function makePanel(n){
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const g=cv.getContext('2d'); const r=mulberry(4200+n*977);
+
+  // paper
+  g.fillStyle='#F2EFE7'; g.fillRect(0,0,W,H);
+  for(let i=0;i<26000;i++){ const v=(r()*30)|0;
+    g.fillStyle='rgba('+(150+v)+','+(146+v)+','+(136+v)+',.30)';
+    g.fillRect(r()*W, r()*H, 2, 2); }
+
+  // Torn bills at angles. Dense edges in every direction is exactly what feature
+  // matching wants, and it is also just what a real paste-up looks like.
+  const used=[];
+  for(let i=0;i<10;i++){
+    const bw=190+r()*250, bh=bw*(1.05+r()*0.45);
+    // keep the sheet mostly on the panel, so set type is not sliced in half
+    const x=-bw*0.12 + r()*(W-bw*0.76), y=-bh*0.10 + r()*(H-bh*0.80);
+    const rot=(r()-0.5)*0.5;
+    g.save(); g.translate(x+bw/2,y+bh/2); g.rotate(rot); g.translate(-bw/2,-bh/2);
+    const dark = r()>0.5;
+    g.save(); torn(g,0,0,bw,bh,r); g.fillStyle= dark?'#0E0C12':'#FBF8F1'; g.fill(); g.clip();
+    const ink = dark?'#FBF8F1':'#0E0C12';
+    // The image block carries VARIED content before it is halftoned. A uniform
+    // dot grid is a repeating pattern, and repetition is exactly what makes
+    // feature matching lock onto the wrong part of a target.
+    const ih=bh*(0.30+r()*0.24);
+    const bx=bw*0.07, by=bh*0.06, bwid=bw*0.86;
+    g.save(); g.beginPath(); g.rect(bx,by,bwid,ih); g.clip();
+    g.fillStyle=ink; g.globalAlpha=.92; g.fillRect(bx,by,bwid,ih); g.globalAlpha=1;
+    const back = dark?'#0E0C12':'#FBF8F1';
+    for(let k=0;k<7;k++){                      // irregular light shapes to break it up
+      g.fillStyle=back; g.globalAlpha=0.25+r()*0.6;
+      g.beginPath();
+      g.ellipse(bx+r()*bwid, by+r()*ih, bwid*(0.06+r()*0.22), ih*(0.08+r()*0.30),
+                r()*3.14, 0, 6.283);
+      g.fill();
+    }
+    g.globalAlpha=1;
+    for(let k=0;k<4;k++){                      // hard bands, strong unique corners
+      g.fillStyle=back; g.globalAlpha=0.5+r()*0.5;
+      g.save(); g.translate(bx+r()*bwid, by+r()*ih); g.rotate((r()-0.5)*1.6);
+      g.fillRect(-bwid*0.4, -ih*0.03, bwid*0.8, ih*(0.03+r()*0.06)); g.restore();
+    }
+    g.globalAlpha=1; g.restore();
+    // real set type: unique words per panel, never a repeating pattern
+    const wds=WORDS[(n*3+i)%WORDS.length];
+    g.fillStyle=ink; g.textAlign='left'; g.textBaseline='top';
+    let ty=bh*0.06+ih+bh*0.05;
+    wds.forEach((wd,k)=>{
+      let fs=k<2? bh*0.155 : bh*0.062;
+      do{ g.font='700 '+fs+'px "Archivo Narrow","Arial Narrow",sans-serif'; fs-=2; }
+      while(g.measureText(wd).width>bw*0.86 && fs>10);
+      g.fillText(wd, bw*0.07, ty); ty += fs*1.06;
+    });
+    g.restore();
+    // tape, more hard edges
+    if(r()>0.4){ g.fillStyle='rgba(20,18,24,.20)'; g.fillRect(bw*0.10,-14,120,32); }
+    g.restore();
+    used.push([x,y,bw,bh]);
+  }
+
+  // solid shapes: strong corners for the detector, and on-brand
+  for(let i=0;i<7;i++) star(g, r()*W, r()*H, 26+r()*46, r()>0.5?'#0E0C12':'#7A1246');
+  for(let i=0;i<5;i++){
+    g.save(); g.translate(r()*W, r()*H); g.rotate((r()-0.5)*1.4);
+    g.fillStyle='#0E0C12'; g.fillRect(-90,-13,180,26); g.restore();
+  }
+
+  // registration corners + the panel number, so load-in hangs them correctly
+  g.fillStyle='#0E0C12';
+  [[0,0],[W-90,0],[0,H-90],[W-90,H-90]].forEach(p=>{
+    g.fillRect(p[0],p[1],90,22); g.fillRect(p[0],p[1],22,90); });
+  g.font='700 92px "Archivo Narrow","Arial Narrow",sans-serif';
+  g.textAlign='center'; g.textBaseline='middle';
+  g.fillStyle='#0E0C12'; g.fillRect(W/2-92,H-150,184,104);
+  g.fillStyle='#F2EFE7'; g.fillText('P'+n, W/2, H-96);
+
+  // grain, which adds fine features without changing the read
+  halftone(g,0,0,W,H,14,1.5,.10,'#0E0C12');
+  return cv;
+}
+
+let panels=[];
+document.getElementById('gen').addEventListener('click',()=>{
+  OUT.innerHTML=''; LOG.textContent=''; panels=[];
+  for(let n=1;n<=4;n++){ const cv=makePanel(n); panels.push(cv); OUT.appendChild(cv); }
+  say('generated 4 panels at '+W+'x'+H+' (3:4, ready for the 480x640 target crop)');
+});
+document.getElementById('save').addEventListener('click',async()=>{
+  if(!panels.length) return say('generate first');
+  for(let i=0;i<panels.length;i++){
+    const r=await fetch('/__save?name=panel-'+(i+1),{method:'POST',body:panels[i].toDataURL('image/png')});
+    say(await r.text());
+  }
+  say('now compile each one:');
+  say('  python make-target-local.py captures/panel-1.png panel1');
+});
+</script>
+</body>
+</html>

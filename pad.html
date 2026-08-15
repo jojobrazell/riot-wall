@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0A0A0C">
+<title>R!OT WALL, trackpad mode</title>
+<meta name="description" content="Your phone is a spray can. Paint the wall.">
+<style>
+  :root{ --magenta:#FF1E8E; --acid:#B6FF1A; --base:#0A0A0C; --panel:#141118; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--base);color:#fff;overflow:hidden;
+    touch-action:none;overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+    font-family:"Archivo Narrow","Arial Narrow",system-ui,sans-serif}
+  body{display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .kicker{font:600 9.5px/1 sans-serif;letter-spacing:.28em;text-transform:uppercase;
+    color:rgba(255,255,255,.45)}
+
+  /* ---- gate ---- */
+  #gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
+    justify-content:center;padding:26px 22px;background:var(--base)}
+  #gate .art{position:absolute;inset:0;opacity:.55;pointer-events:none;
+    background:radial-gradient(60% 40% at 18% 10%, rgba(255,30,142,.45), transparent 70%),
+      radial-gradient(50% 40% at 86% 80%, rgba(123,44,255,.36), transparent 70%),
+      radial-gradient(40% 30% at 60% 106%, rgba(255,106,0,.30), transparent 70%)}
+  #gate .in{position:relative;z-index:1}
+  .wordmark{font:800 36px/0.9 Georgia,serif;margin:6px 0 10px}
+  .wordmark em{font-style:normal;color:var(--magenta)}
+  label{display:block;margin:15px 0 6px;font:600 9.5px/1 sans-serif;letter-spacing:.24em;
+    text-transform:uppercase;color:rgba(255,255,255,.55)}
+  input[type=text],input[type=email]{width:100%;padding:15px 14px;font:600 17px/1 inherit;
+    color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);
+    border-radius:10px;outline:none}
+  input:focus{border-color:var(--magenta);background:rgba(255,30,142,.10)}
+  .consent{margin-top:14px;font:500 11.5px/1.5 sans-serif;color:rgba(255,255,255,.50)}
+  .btn{display:block;width:100%;margin-top:16px;padding:17px;border:0;border-radius:11px;
+    background:var(--magenta);color:#0A0A0C;font:800 15px/1 inherit;letter-spacing:.16em;
+    text-transform:uppercase;cursor:pointer}
+  .err{margin-top:9px;color:#E01B24;font:600 12px/1.4 sans-serif;min-height:16px}
+
+  /* ---- can ---- */
+  #top{display:flex;align-items:center;justify-content:space-between;padding:9px 14px 6px}
+  #who{font:700 12px/1 inherit;letter-spacing:.14em;color:var(--acid)}
+  #padwrap{padding:0 10px}
+  #pad{width:100%;aspect-ratio:16/9;display:block;border-radius:10px;touch-action:none;
+    border:1px solid rgba(255,255,255,.16);box-shadow:0 14px 40px rgba(0,0,0,.6)}
+  .hint{text-align:center;padding:7px 14px 2px;font:600 10px/1.4 sans-serif;
+    letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.38)}
+  #tools{flex:1 1 auto;display:flex;flex-direction:column;gap:8px;padding:8px 10px 10px;
+    min-height:0;justify-content:flex-end}
+  .row{display:flex;gap:7px;align-items:center}
+  .noz{flex:1 1 0;min-height:46px;border-radius:9px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#c8ccd2;
+    display:flex;align-items:center;justify-content:center;font:700 9.5px/1 inherit;
+    letter-spacing:.10em;text-transform:uppercase}
+  .noz[aria-pressed="true"]{background:var(--magenta);border-color:var(--magenta);color:#0A0A0C}
+  #wheelWrap{position:relative;width:58px;height:58px;border-radius:50%;overflow:hidden;
+    flex:0 0 auto;box-shadow:0 0 0 2px rgba(255,255,255,.18);touch-action:none}
+  #wheel{width:100%;height:100%;display:block}
+  #dot{position:absolute;width:11px;height:11px;border-radius:50%;border:2px solid #fff;
+    box-shadow:0 0 0 1.5px rgba(0,0,0,.55);pointer-events:none;transform:translate(-50%,-50%);
+    left:50%;top:50%}
+  .sliders{flex:1 1 auto;display:flex;flex-direction:column;gap:8px}
+  .sl{display:flex;flex-direction:column;gap:3px}
+  .sl .lab{display:flex;justify-content:space-between;font:600 8.5px/1 monospace;
+    letter-spacing:.10em;text-transform:uppercase;color:rgba(255,255,255,.42)}
+  input[type=range]{-webkit-appearance:none;background:transparent;width:100%;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:4px;background:#27272a;border-radius:2px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;height:18px;width:18px;
+    border-radius:50%;background:#e4e4e7;margin-top:-7px}
+  .mini{min-height:46px;padding:0 12px;border-radius:9px;border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.05);color:#fff;font:700 10px/1 inherit;letter-spacing:.12em;
+    text-transform:uppercase;cursor:pointer}
+  .mini[aria-pressed="true"]{background:var(--acid);border-color:var(--acid);color:#0A0A0C}
+  #offline{position:fixed;left:0;right:0;bottom:0;padding:9px;background:#E01B24;
+    font:700 11px/1 inherit;letter-spacing:.16em;text-transform:uppercase;text-align:center;
+    display:none;z-index:15}
+  #offline.on{display:block}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="art"></div>
+  <div class="in">
+    <div class="kicker">Slowsie x MIXR</div>
+    <div class="wordmark">R<em>!</em>OT WALL</div>
+    <div style="font:500 13.5px/1.5 sans-serif;color:rgba(255,255,255,.74)">
+      Your phone is a spray can. Paint the wall on the screen, live.
+    </div>
+    <label for="handle">Your tag name</label>
+    <input id="handle" type="text" maxlength="18" autocomplete="nickname" placeholder="GRL CRUSH">
+    <label for="email">Email, so we can send you the finished wall</label>
+    <input id="email" type="email" inputmode="email" autocomplete="email" placeholder="you@email.com">
+    <div class="consent">
+      We will email you the finished wall after the night, and occasionally about what
+      Slowsie and MIXR do next. Nobody else gets your address.
+    </div>
+    <div class="err" id="gateErr"></div>
+    <button class="btn" id="go">Grab a can</button>
+  </div>
+</div>
+
+<div id="top"><div class="kicker">Your can</div><div id="who"></div></div>
+<div id="padwrap"><canvas id="pad"></canvas></div>
+<div class="hint">Drag here. It lands on the big screen.</div>
+
+<div id="tools">
+  <div class="row">
+    <button class="noz" data-n="solid" aria-pressed="true">Marker</button>
+    <button class="noz" data-n="fat">Fat cap</button>
+    <button class="noz" data-n="splatter">Splatter</button>
+    <button class="noz" data-n="wet">Wet</button>
+    <button class="noz" data-n="streak">Streak</button>
+  </div>
+  <div class="row">
+    <div id="wheelWrap"><canvas id="wheel" width="64" height="64"></canvas><div id="dot"></div></div>
+    <div class="sliders">
+      <div class="sl"><div class="lab"><span>Size</span><span id="sv">1.0</span></div>
+        <input type="range" id="size" min="0.5" max="3" step="0.1" value="1"></div>
+      <div class="sl"><div class="lab"><span>Feather</span><span id="fv">1.0</span></div>
+        <input type="range" id="spread" min="0.5" max="2" step="0.1" value="1"></div>
+    </div>
+  </div>
+  <div class="row">
+    <button class="mini" id="brush" aria-pressed="true" style="flex:1">Paint</button>
+    <button class="mini" id="eraser" style="flex:1">Erase</button>
+  </div>
+</div>
+
+<div id="offline">Lost the wall, reconnecting</div>
+
+<script type="module">
+import { spray, NOZZLES } from './spray.js?v=2';
+
+const $=s=>document.querySelector(s);
+const pad=$('#pad'), ctx=pad.getContext('2d');
+let me=null, color='#FF1E8E', nozzle='solid', tool='brush', size=1, spread=1;
+let last=null, batch=[], strokeStart=false, sending=false;
+
+/* ---------- gate ---------- */
+const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+$('#go').addEventListener('click', async ()=>{
+  const handle=$('#handle').value.trim(), email=$('#email').value.trim();
+  if(handle.length<2) return $('#gateErr').textContent='Give yourself a tag name.';
+  if(!emailOk(email)) return $('#gateErr').textContent='That email does not look right.';
+  $('#go').disabled=true; $('#go').textContent='...';
+  try{
+    const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({handle,email})});
+    if(!r.ok) throw 0;
+    me=await r.json();
+    $('#who').textContent=me.handle;
+    $('#gate').style.display='none';
+    fit();
+  }catch{ $('#go').disabled=false; $('#go').textContent='Grab a can';
+    $('#gateErr').textContent='Could not reach the wall. Same wifi?'; }
+});
+
+/* ---------- colour wheel, JoJo's ---------- */
+const wheel=$('#wheel'), wctx=wheel.getContext('2d',{willReadFrequently:true});
+(function drawWheel(){
+  const w=64,cx=32,cy=32,rad=32;
+  for(let y=0;y<w;y++) for(let x=0;x<w;x++){
+    const dx=x-cx, dy=y-cy, d=Math.hypot(dx,dy);
+    if(d<=rad){ const hue=(Math.atan2(dy,dx)+Math.PI)/(Math.PI*2)*360;
+      wctx.fillStyle=`hsl(${hue}, ${d/rad*100}%, 50%)`; wctx.fillRect(x,y,1,1); }
+  }
+})();
+function pickColour(e){
+  const r=wheel.getBoundingClientRect();
+  const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  $('#dot').style.left=cx+'px'; $('#dot').style.top=cy+'px';
+  const px=wctx.getImageData(Math.max(0,Math.min(63,cx*64/r.width)),
+    Math.max(0,Math.min(63,cy*64/r.height)),1,1).data;
+  if(px[3]>0) color='#'+((1<<24)+(px[0]<<16)+(px[1]<<8)+px[2]).toString(16).slice(1);
+}
+let wheelDrag=false;
+const ww=$('#wheelWrap');
+ww.addEventListener('pointerdown',e=>{ww.setPointerCapture(e.pointerId);wheelDrag=true;pickColour(e);});
+ww.addEventListener('pointermove',e=>{ if(wheelDrag) pickColour(e); });
+ww.addEventListener('pointerup',()=>wheelDrag=false);
+
+/* ---------- tools ---------- */
+document.querySelectorAll('.noz').forEach(b=>b.addEventListener('click',()=>{
+  nozzle=b.dataset.n;
+  document.querySelectorAll('.noz').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+}));
+$('#size').addEventListener('input',e=>{size=+e.target.value; $('#sv').textContent=size.toFixed(1);});
+$('#spread').addEventListener('input',e=>{spread=+e.target.value; $('#fv').textContent=spread.toFixed(1);});
+$('#brush').addEventListener('click',()=>{tool='brush';
+  $('#brush').setAttribute('aria-pressed','true'); $('#eraser').setAttribute('aria-pressed','false');});
+$('#eraser').addEventListener('click',()=>{tool='eraser';
+  $('#eraser').setAttribute('aria-pressed','true'); $('#brush').setAttribute('aria-pressed','false');});
+
+/* ---------- the pad ----------
+   It renders locally with the SAME engine as the wall, so the stroke appears
+   under your finger instantly. Waiting for the network round trip before you
+   see paint is what makes a remote controller feel broken. */
+function fit(){
+  const r=pad.getBoundingClientRect();
+  const dpr=Math.min(2, devicePixelRatio||1);
+  pad.width=Math.round(r.width*dpr); pad.height=Math.round(r.width*dpr*9/16);
+  ctx.fillStyle='#1b1620'; ctx.fillRect(0,0,pad.width,pad.height);
+}
+addEventListener('resize', fit);
+
+const local=e=>{ const r=pad.getBoundingClientRect();
+  return [ (e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height ]; };
+
+pad.addEventListener('pointerdown', e=>{
+  if(!me) return;
+  pad.setPointerCapture(e.pointerId);
+  const [x,y]=local(e); last=null; strokeStart=true;
+  paintLocal(x,y); batch.push([x,y]);
+});
+pad.addEventListener('pointermove', e=>{
+  if(!me || !pad.hasPointerCapture(e.pointerId)) return;
+  const [x,y]=local(e);
+  paintLocal(x,y); batch.push([x,y]);
+});
+const up=()=>{ last=null; flush(true); };
+pad.addEventListener('pointerup', up);
+pad.addEventListener('pointercancel', up);
+
+function paintLocal(nx,ny){
+  const p={ x:nx*pad.width, y:ny*pad.height, color, nozzle, tool,
+            size:size*(pad.width/1920), spread, depth:1 };
+  // scale the nozzle to the pad so the local echo matches the wall proportionally
+  last = spray(ctx, { ...p, size:size*(pad.width/1600) }, last);
+}
+
+/* ---------- send ----------
+   Batched at ~20Hz. One POST per point would swamp the server with dozens of
+   phones going at once; one POST per 50ms carrying the points since last time
+   is smooth on the wall and cheap on the wire. */
+setInterval(flush, 50);
+async function flush(force){
+  if(sending || !me || !batch.length) return;
+  const p=batch; batch=[];
+  const b=strokeStart; strokeStart=false;
+  sending=true;
+  try{
+    await fetch('/api/spray',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({u:me.id,c:color,n:nozzle,t:tool,s:size,sp:spread,b,p})});
+    $('#offline').classList.remove('on');
+  }catch{ $('#offline').classList.add('on'); }
+  sending=false;
+}
+
+fit();
+</script>
+</body>
+</html>
