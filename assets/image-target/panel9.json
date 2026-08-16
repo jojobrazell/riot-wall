@@ -1,0 +1,23 @@
+{
+  "imagePath": "assets/image-target/panel9_luminance.png",
+  "metadata": null,
+  "name": "panel9",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 0,
+    "width": 1200,
+    "height": 1600,
+    "isRotated": false,
+    "originalWidth": 1200,
+    "originalHeight": 1600
+  },
+  "resources": {
+    "originalImage": "panel9_original.png",
+    "croppedImage": "panel9_cropped.png",
+    "thumbnailImage": "panel9_thumbnail.png",
+    "luminanceImage": "panel9_luminance.png"
+  },
+  "created": 1786851807870,
+  "updated": 1786851807870
+}

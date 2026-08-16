@@ -148,21 +148,26 @@ if (existsSync(CALIB_FILE)) {
    in /admin and the metres readout becomes true. Aim is exact either way, only
    the distance number scales. */
 const SCREEN_LAYOUT = {
-  panelW: 0.075,          // poster width, fraction of screen width
+  panelW: 0.082,          // poster width, fraction of screen width
   /* EIGHT posters since 2026-08-15 evening (JoJo: "way more posters"), spread
      so a phone aimed ANYWHERE has an anchor near frame. The two OUTER posters
      share a height on purpose: the fallback aimer reads the leftmost and
      rightmost bright bands as a ruler and needs their vertical extents to
      overlap. Middles stagger high/low like a real paste-up run. */
+  /* TEN since JoJo's second density pass (2026-08-15 late: "sprays still fall
+     off when moving"): a sweep across the middle now always has a poster inside
+     the motion-blurred frame. Ten is the tracking engine's safe ceiling. */
   panels: [
-    { name: 'panel1', fx: 0.055, fy: 0.50 },
-    { name: 'panel2', fx: 0.185, fy: 0.26 },
-    { name: 'panel3', fx: 0.315, fy: 0.73 },
-    { name: 'panel4', fx: 0.445, fy: 0.27 },
-    { name: 'panel5', fx: 0.575, fy: 0.72 },
-    { name: 'panel6', fx: 0.705, fy: 0.25 },
-    { name: 'panel7', fx: 0.835, fy: 0.74 },
-    { name: 'panel8', fx: 0.945, fy: 0.50 },
+    { name: 'panel1',  fx: 0.050, fy: 0.50 },
+    { name: 'panel2',  fx: 0.150, fy: 0.26 },
+    { name: 'panel3',  fx: 0.250, fy: 0.72 },
+    { name: 'panel4',  fx: 0.350, fy: 0.28 },
+    { name: 'panel5',  fx: 0.450, fy: 0.70 },
+    { name: 'panel6',  fx: 0.550, fy: 0.25 },
+    { name: 'panel7',  fx: 0.650, fy: 0.73 },
+    { name: 'panel8',  fx: 0.750, fy: 0.27 },
+    { name: 'panel9',  fx: 0.850, fy: 0.71 },
+    { name: 'panel10', fx: 0.950, fy: 0.50 },
   ],
 };
 let screenPanels = true;
@@ -324,7 +329,7 @@ createServer(async (req, res) => {
       const color = HEX.test(raw.c) ? raw.c : '#a855f7';
       const nozzle = NOZ.has(raw.n) ? raw.n : 'solid';
       const tool = raw.t === 'eraser' ? 'eraser' : 'brush';
-      const size = Math.max(0.5, Math.min(3, +raw.s || 1));
+      const size = Math.max(0.4, Math.min(4, +raw.s || 1));   // matches RANGE_M's wider throw
       const spread = Math.max(0.5, Math.min(2, +raw.sp || 1));
       const pts = Array.isArray(raw.p) ? raw.p.slice(0, 120) : [];
       if (!pts.length) return json(200, { ok: true });

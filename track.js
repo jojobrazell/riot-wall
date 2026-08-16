@@ -25,8 +25,8 @@
 /* ---------- the printed panels ----------
    Eight since 2026-08-15 (JoJo: more anchors across the wall). Each is a unique
    compiled target; the engine only needs to SEE one of them to aim. */
-export const PANELS = ['panel1', 'panel2', 'panel3', 'panel4',
-                       'panel5', 'panel6', 'panel7', 'panel8'];
+export const PANELS = ['panel1', 'panel2', 'panel3', 'panel4', 'panel5',
+                       'panel6', 'panel7', 'panel8', 'panel9', 'panel10'];
 
 /* ---------- small quaternion helpers (no Three.js on the phone) ---------- */
 export function qrot(q, v) {
@@ -127,6 +127,8 @@ export function defaultCalib() {
       panel6: { offXMm: -500, offYMm: -330, heightMm: 594, on: false },
       panel7: { offXMm:  500, offYMm:  330, heightMm: 594, on: false },
       panel8: { offXMm:  500, offYMm: -330, heightMm: 594, on: false },
+      panel9: { offXMm:    0, offYMm:  330, heightMm: 594, on: false },
+      panel10:{ offXMm:    0, offYMm: -330, heightMm: 594, on: false },
     },
   };
 }
@@ -216,7 +218,10 @@ export function aimFromPose(detail, cam, cal, aspect) {
    NEAR and FAR are METRES now, not a fill fraction, so they can be set by
    standing at the nearest and furthest a guest would stand and reading the HUD.
    Still must be tuned at the venue against the real screen. */
-export const RANGE_M = { near: 1.2, far: 6.0, minSize: 0.55, maxSize: 3.0 };
+/* Punched up (JoJo, 2026-08-15: the distance-to-thickness link was too subtle to
+   feel). Steeper range, wider extremes: arm's length is a FAT cap, the back of
+   the floor is a pencil. */
+export const RANGE_M = { near: 1.0, far: 5.0, minSize: 0.45, maxSize: 3.8 };
 
 export function sizeFromDistance(m) {
   const t = (RANGE_M.far - m) / (RANGE_M.far - RANGE_M.near);
