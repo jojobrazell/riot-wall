@@ -22,8 +22,11 @@
 // A rotated or cropped target reports its pose in a different normalisation and I
 // have no way to test one here, so it is refused loudly instead of guessed at.
 
-/* ---------- the four printed panels ---------- */
-export const PANELS = ['panel1', 'panel2', 'panel3', 'panel4'];
+/* ---------- the printed panels ----------
+   Eight since 2026-08-15 (JoJo: more anchors across the wall). Each is a unique
+   compiled target; the engine only needs to SEE one of them to aim. */
+export const PANELS = ['panel1', 'panel2', 'panel3', 'panel4',
+                       'panel5', 'panel6', 'panel7', 'panel8'];
 
 /* ---------- small quaternion helpers (no Three.js on the phone) ---------- */
 export function qrot(q, v) {
@@ -117,6 +120,13 @@ export function defaultCalib() {
       panel2: { offXMm: -990, offYMm: -330, heightMm: 594, on: true },
       panel3: { offXMm:  990, offYMm:  330, heightMm: 594, on: true },
       panel4: { offXMm:  990, offYMm: -330, heightMm: 594, on: true },
+      // 5-8 exist only as on-screen posters; in printed mode they are OFF until
+      // someone actually hangs and measures them. The server's screen calib
+      // overrides these with real positions.
+      panel5: { offXMm: -500, offYMm:  330, heightMm: 594, on: false },
+      panel6: { offXMm: -500, offYMm: -330, heightMm: 594, on: false },
+      panel7: { offXMm:  500, offYMm:  330, heightMm: 594, on: false },
+      panel8: { offXMm:  500, offYMm: -330, heightMm: 594, on: false },
     },
   };
 }

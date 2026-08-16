@@ -36,6 +36,7 @@
 
 <script type="module">
 const OUT=document.getElementById('out'), LOG=document.getElementById('log');
+const COUNT=8;                              // JoJo 2026-08-15: more posters = more anchors
 const W=1200, H=1600;                       // 3:4 portrait, matches the target crop
 const say=m=>LOG.textContent+=m+'\n';
 
@@ -156,8 +157,8 @@ function makePanel(n){
 let panels=[];
 document.getElementById('gen').addEventListener('click',()=>{
   OUT.innerHTML=''; LOG.textContent=''; panels=[];
-  for(let n=1;n<=4;n++){ const cv=makePanel(n); panels.push(cv); OUT.appendChild(cv); }
-  say('generated 4 panels at '+W+'x'+H+' (3:4, ready for the 480x640 target crop)');
+  for(let n=1;n<=COUNT;n++){ const cv=makePanel(n); panels.push(cv); OUT.appendChild(cv); }
+  say('generated '+COUNT+' panels at '+W+'x'+H+' (3:4, ready for the 480x640 target crop)');
 });
 document.getElementById('save').addEventListener('click',async()=>{
   if(!panels.length) return say('generate first');

@@ -148,17 +148,21 @@ if (existsSync(CALIB_FILE)) {
    in /admin and the metres readout becomes true. Aim is exact either way, only
    the distance number scales. */
 const SCREEN_LAYOUT = {
-  panelW: 0.085,          // poster width, fraction of screen width
-  /* Spread across the wall so a phone aimed ANYWHERE has a poster near frame
-     (JoJo, 2026-08-15: mid-wall aim kept losing lock and the paint fell).
-     The two OUTER posters share a height on purpose: the fallback aimer reads
-     the leftmost and rightmost bright bands as a ruler and needs their
-     vertical extents to overlap. */
+  panelW: 0.075,          // poster width, fraction of screen width
+  /* EIGHT posters since 2026-08-15 evening (JoJo: "way more posters"), spread
+     so a phone aimed ANYWHERE has an anchor near frame. The two OUTER posters
+     share a height on purpose: the fallback aimer reads the leftmost and
+     rightmost bright bands as a ruler and needs their vertical extents to
+     overlap. Middles stagger high/low like a real paste-up run. */
   panels: [
-    { name: 'panel1', fx: 0.060, fy: 0.50 },
-    { name: 'panel2', fx: 0.380, fy: 0.30 },
-    { name: 'panel3', fx: 0.620, fy: 0.72 },
-    { name: 'panel4', fx: 0.940, fy: 0.50 },
+    { name: 'panel1', fx: 0.055, fy: 0.50 },
+    { name: 'panel2', fx: 0.185, fy: 0.26 },
+    { name: 'panel3', fx: 0.315, fy: 0.73 },
+    { name: 'panel4', fx: 0.445, fy: 0.27 },
+    { name: 'panel5', fx: 0.575, fy: 0.72 },
+    { name: 'panel6', fx: 0.705, fy: 0.25 },
+    { name: 'panel7', fx: 0.835, fy: 0.74 },
+    { name: 'panel8', fx: 0.945, fy: 0.50 },
   ],
 };
 let screenPanels = true;

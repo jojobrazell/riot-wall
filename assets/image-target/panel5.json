@@ -1,0 +1,23 @@
+{
+  "imagePath": "assets/image-target/panel5_luminance.png",
+  "metadata": null,
+  "name": "panel5",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 0,
+    "width": 1200,
+    "height": 1600,
+    "isRotated": false,
+    "originalWidth": 1200,
+    "originalHeight": 1600
+  },
+  "resources": {
+    "originalImage": "panel5_original.png",
+    "croppedImage": "panel5_cropped.png",
+    "thumbnailImage": "panel5_thumbnail.png",
+    "luminanceImage": "panel5_luminance.png"
+  },
+  "created": 1786839701416,
+  "updated": 1786839701416
+}
