@@ -1,6 +1,6 @@
 # R!OT WALL, putting it online
 
-Slowsie x MIXR STUDIOS. Every guest's phone becomes a spray can; they all paint
+ENDLESS RIVER x MIXR STUDIOS. Every guest's phone becomes a spray can; they all paint
 one shared wall on the venue screen at once.
 
 ## Read this first: it is not a static site

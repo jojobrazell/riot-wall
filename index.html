@@ -530,7 +530,7 @@ html,body{
       <div class="stk"></div><div class="tone live"></div><div class="wash"></div>
       <i class="tape tl"></i><i class="tape tr"></i><i class="tape ghost"></i>
 
-      <span class="eyebrow">SLOWSIE X MIXR</span>
+      <span class="eyebrow">ENDLESS RIVER X MIXR</span>
 
       <div class="markwrap">
         <svg class="mark" viewBox="0 0 348 104" role="img" aria-label="R!OT WALL"
@@ -1060,11 +1060,57 @@ ww.addEventListener('pointerdown',e=>{ww.setPointerCapture(e.pointerId);wd=true;
 ww.addEventListener('pointermove',e=>{if(wd)pick(e);});
 ww.addEventListener('pointerup',()=>wd=false);
 
+/* ---------- the pssssss ----------
+   Synthesized, not a sample (JoJo, 2026-08-15: "spray can sound when they press").
+   Looped white noise through a highpass and a bandpass IS a rattle-can hiss, there
+   is no file to load, and a 7Hz wobble on the gain keeps a long press from reading
+   as a test tone. Starts inside the pointerdown, so iOS lets it speak. */
+let sprayAC=null, sprayGain=null, sprayNoise=null;
+function hissOn(){
+  try{
+    sprayAC = sprayAC || new (window.AudioContext||window.webkitAudioContext)();
+    if(sprayAC.state==='suspended') sprayAC.resume();
+    if(sprayNoise) return;
+    if(!hissOn.buf){
+      const len=sprayAC.sampleRate*1.2;
+      const b=sprayAC.createBuffer(1,len,sprayAC.sampleRate);
+      const d=b.getChannelData(0);
+      for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+      hissOn.buf=b;
+    }
+    const src=sprayAC.createBufferSource(); src.buffer=hissOn.buf; src.loop=true;
+    const hp=sprayAC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2600;
+    const bp=sprayAC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=6800; bp.Q.value=0.7;
+    const g=sprayAC.createGain();
+    const now=sprayAC.currentTime;
+    g.gain.setValueAtTime(0.0001,now);
+    g.gain.exponentialRampToValueAtTime(0.22,now+0.04);
+    const lfo=sprayAC.createOscillator(), lg=sprayAC.createGain();
+    lfo.frequency.value=7; lg.gain.value=0.04;
+    lfo.connect(lg).connect(g.gain); lfo.start();
+    src.connect(hp); hp.connect(bp); bp.connect(g); g.connect(sprayAC.destination);
+    src.start();
+    src._lfo=lfo; sprayNoise=src; sprayGain=g;
+  }catch{}
+}
+function hissOff(){
+  try{
+    if(!sprayNoise) return;
+    const src=sprayNoise, lfo=src._lfo, g=sprayGain;
+    sprayNoise=null; sprayGain=null;
+    const now=sprayAC.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),now);
+    g.gain.exponentialRampToValueAtTime(0.0001,now+0.10);
+    setTimeout(()=>{try{src.stop();lfo.stop();}catch{}},170);
+  }catch{}
+}
+
 /* ---------- the trigger ---------- */
 const btn=$('#spray');
 const down=e=>{ e.preventDefault(); if(!lock || btn.disabled) return;
-  spraying=true; strokeStart=true; btn.classList.add('on'); stamp(); };
-const up=e=>{ e.preventDefault(); spraying=false; btn.classList.remove('on'); flush(); };
+  spraying=true; strokeStart=true; btn.classList.add('on'); hissOn(); stamp(); };
+const up=e=>{ e.preventDefault(); spraying=false; btn.classList.remove('on'); hissOff(); flush(); };
 btn.addEventListener('pointerdown',down);
 btn.addEventListener('pointerup',up);
 btn.addEventListener('pointercancel',up);
