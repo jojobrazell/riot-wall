@@ -37,13 +37,17 @@ const ADMIN_KEY = process.env.RIOT_ADMIN_KEY || 'riot2026';
    data/ is EPHEMERAL on a PaaS free tier: a redeploy or a spin-down wipes the
    disk, and the emails are the deliverable of the night. So every join is also
    fired at Firestore, write-only, fire-and-forget: a Firestore failure logs and
-   never blocks the can. Anonymous auth, same flow the project board uses. */
+   never blocks the can. Anonymous auth, same flow the project board uses.
+   FIREBASE_API_KEY is env-only ON PURPOSE: this repo is public and a Google
+   key committed here would be flagged by secret scanning and could get the
+   board's key restricted. No key set = no backup, said out loud at boot. */
 const FB = {
-  project: process.env.FIREBASE_PROJECT_ID || '',
+  project: process.env.FIREBASE_PROJECT_ID || 'mixr-project-board',
   apiKey: process.env.FIREBASE_API_KEY || '',
   collection: process.env.FIREBASE_COLLECTION || 'riot-wall-leads',
   token: '', tokenAt: 0,
 };
+if (!FB.apiKey) console.log('lead backup to Firestore is OFF: set FIREBASE_API_KEY to enable');
 async function fbToken() {
   if (FB.token && Date.now() - FB.tokenAt < 50 * 60 * 1000) return FB.token;
   const r = await fetch(
