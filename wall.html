@@ -29,9 +29,14 @@
   .qr img{width:100%;height:100%;image-rendering:pixelated;display:block}
   .big{font:800 2.9vh/1.05 inherit}
   .url{font:700 1.85vh/1.4 monospace;color:var(--acid)}
-  .brands{text-align:right;font:600 1.2vh/1.9 sans-serif;letter-spacing:.24em;
-    text-transform:uppercase;color:rgba(255,255,255,.40)}
-  .brands b{color:rgba(255,255,255,.80);font-weight:700}
+  .brands{display:flex;flex-direction:column;align-items:flex-end;gap:1.1vh}
+  /* Real marks, not set type (JoJo, 2026-08-15). brightness(0) invert(1) stencils
+     any logo to white, which on brick reads as sprayed through a stencil: on-deck. */
+  .brands img{display:block;filter:brightness(0) invert(1);opacity:.88}
+  .brands .er{height:5.2vh}
+  .brands .mixr{height:2.6vh;opacity:.62}
+  .brands .by{font:600 1.05vh/1 sans-serif;letter-spacing:.30em;text-transform:uppercase;
+    color:rgba(255,255,255,.38)}
   #offline{position:fixed;left:3.2vw;top:50%;transform:translateY(-50%);padding:1.1vh 1.5vw;
     background:rgba(224,27,36,.92);border-radius:8px;font:700 1.5vh/1 inherit;
     letter-spacing:.16em;text-transform:uppercase;display:none}
@@ -62,8 +67,11 @@
       <div><div class="big">YOUR PHONE IS A SPRAY CAN</div>
         <div class="url" id="url">connecting...</div></div>
     </div>
-    <div class="brands"><div><b>ENDLESS RIVER</b></div>
-      <div>Experience by <b>MIXR STUDIOS</b></div></div>
+    <div class="brands">
+      <img class="er" src="assets/brand/endless_river.webp" alt="ENDLESS RIVER">
+      <div class="by">Experience by</div>
+      <img class="mixr" src="assets/brand/mixr_logo.webp" alt="MIXR STUDIOS">
+    </div>
   </footer>
 </div>
 <div id="offline">Reconnecting</div>
@@ -71,7 +79,7 @@
 <script src="./vendor/qrcode/qrcode.js"></script>
 <script type="module">
 import { spray } from './spray.js?v=3';
-import { drawSurface, drawRelief } from './surface.js?v=1';
+import { drawSurface, drawRelief } from './surface.js?v=2';
 
 const bg=document.getElementById('bg'), bgx=bg.getContext('2d');
 const paint=document.getElementById('paint'), px=paint.getContext('2d',{willReadFrequently:true});
@@ -249,7 +257,7 @@ async function showJoin(){
   if(local){
     try{ const j=await (await fetch('/api/wifi')).json();
       if(j.urls&&j.urls.length) url=j.urls[0]; }catch{}
-  }
+  } else url='https://mixr.link/ar-wall-spray';   // branded door (JoJo, 2026-08-15)
   document.getElementById('url').textContent=url.replace(/^https?:\/\//,'');
   try{ if(window.qrcode){ const q=window.qrcode(0,'M'); q.addData(url); q.make();
     const el=document.getElementById('qr'); el.innerHTML=q.createImgTag(8,2);

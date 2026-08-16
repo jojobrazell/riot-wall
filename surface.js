@@ -72,9 +72,13 @@ function buildHeight(w, h, type, k) {
     // projection read as giant novelty bricks (JoJo, 2026-08-15), so the courses
     // run finer than life. Small enough to read as texture, big enough that the
     // mortar relief survives the bake cap.
+    /* Thinner joints and a tighter shoulder (JoJo, 2026-08-15: "more realistic").
+       The pillowy look was geometry, not lighting: a wide joint plus a slow ramp
+       makes every brick a rounded cushion with a drawn outline. Real masonry is a
+       flat face with a NARROW recessed line. */
     const bw = (sub ? 132 : 118) * k, bh = (sub ? 64 : 38) * k;
-    const joint = (sub ? 7 : 9) * k;         // mortar width
-    const round = (sub ? 5 : 6) * k;         // how rounded the brick shoulder is
+    const joint = (sub ? 6 : 6) * k;         // mortar width
+    const round = (sub ? 4 : 3.6) * k;       // how fast the shoulder rises
     for (let y = 0; y < h; y++) {
       const row = Math.floor(y / (bh + joint));
       const offX = (row % 2) ? bw / 2 : 0;
@@ -92,7 +96,7 @@ function buildHeight(w, h, type, k) {
         let hgt;
         if (d < 0) hgt = 0;                                  // in the joint
         else hgt = Math.min(1, d / round);                   // shoulder ramp
-        hgt = Math.pow(fade(Math.max(0, hgt)), 0.55);         // flat face, fast rise
+        hgt = Math.pow(fade(Math.max(0, hgt)), 0.40);         // flat face, fast rise
 
         const id = hash2(col, row, 7);
         // each brick sits slightly proud or shy, and is very slightly tilted
@@ -221,7 +225,12 @@ function offscreen(rw, rh) {
    Dark, because the venue is dark and the paint is the thing that should glow.
    Warm blacks, never blue blacks: the deck is punk, not cyberpunk. */
 const PAL = {
-  brick:    { face: [58, 44, 40], faceVar: [26, 14, 12], joint: [92, 86, 80] },
+  brick:    { face: [58, 44, 40], faceVar: [26, 14, 12], joint: [92, 86, 80],
+    /* A wall is not one clay. Families picked from fired-brick photos, dark
+       because the venue is dark: common red, ochre flash, pale underfired,
+       burnt clinker. ID selects the family per brick, faceVar still wobbles
+       inside it. */
+    families: [[64, 42, 36], [74, 54, 38], [88, 74, 62], [38, 30, 30]] },
   subway:   { face: [206, 202, 194], faceVar: [16, 16, 16], joint: [96, 92, 86] },
   concrete: { face: [86, 82, 79], faceVar: [10, 10, 10], joint: [70, 66, 63] },
   plaster:  { face: [176, 170, 160], faceVar: [12, 12, 12], joint: [140, 134, 126] },
@@ -252,7 +261,7 @@ export function drawSurface(ctx, w, h, type, customImg) {
 
   // light from the upper left, the way a venue side wash falls
   const lx = -0.46, ly = -0.62, lz = 0.64;
-  const nScale = 2.6;                        // how pronounced the relief reads
+  const nScale = 2.2;                        // how pronounced the relief reads
 
   for (let y = 0; y < h; y++) {
     const yUp = y > 0 ? y - 1 : y, yDn = y < h - 1 ? y + 1 : y;
@@ -272,13 +281,17 @@ export function drawSurface(ctx, w, h, type, customImg) {
       // are, so the highlight is modulated per brick and kept to a whisper.
       const hx = lx, hy = ly, hz = lz + 1;
       const hn = 1 / Math.sqrt(hx * hx + hy * hy + hz * hz);
-      const gloss = 0.03 + ID[i] * 0.16;
+      const gloss = 0.02 + ID[i] * 0.09;    // fired clay is matte; sheen is a whisper
       const spec = Math.pow(Math.max(0, nx * hx * hn + ny * hy * hn + nz * hz * hn), 26) * gloss;
 
       const inJoint = H[i] < 0.12;
-      const base = inJoint ? pal.joint : pal.face;
-      // widened, and pushed off centre so a few bricks are properly dark or pale
-      const vary = inJoint ? 0.06 : (Math.pow(ID[i], 0.7) - 0.5) * 2.6;
+      // per-brick clay family first, then the value wobble inside the family
+      let base = inJoint ? pal.joint : pal.face;
+      if (!inJoint && pal.families) {
+        const t = ID[i];
+        base = pal.families[t > 0.93 ? 3 : t > 0.72 ? 2 : t > 0.42 ? 1 : 0];
+      }
+      const vary = inJoint ? 0.06 : (Math.pow(ID[i], 0.7) - 0.5) * 1.6;
 
       // STAINING. Large drifting blotches that ignore the courses entirely, which
       // is what actually breaks a brick grid: damp, soot, old paint, rain streaks.
@@ -329,7 +342,9 @@ export function drawRelief(ctx, w, h, type) {
     const a = (1 - ao[i]);
     const p = i * 4;
     d[p] = 0; d[p + 1] = 0; d[p + 2] = 0;
-    d[p + 3] = Math.max(0, Math.min(255, a * a * 300));
+    /* 300 drew every joint as a comic outline; the thinner joints need less ink
+       to read as depth. */
+    d[p + 3] = Math.max(0, Math.min(255, a * a * 225));
   }
   ox.putImageData(img, 0, 0);
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
